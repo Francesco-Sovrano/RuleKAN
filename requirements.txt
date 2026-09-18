@@ -1,0 +1,19 @@
+matplotlib
+numpy
+scikit_learn
+setuptools
+sympy
+torch
+tqdm
+pandas
+seaborn
+pyyaml
+
+scipy
+mpmath
+more_itertools
+ollama
+openai
+
+## Experiments only
+pykan

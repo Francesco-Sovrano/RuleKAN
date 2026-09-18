@@ -1,0 +1,4 @@
+# Official SR-KAN symbolic-regression implementation by Bühler & Guillén-Gosálbez.
+# Do NOT replace this with `srkan` from PyPI; that name currently refers to a
+# different spiking-network project.
+git+https://github.com/marcobuhler/SR-KAN.git

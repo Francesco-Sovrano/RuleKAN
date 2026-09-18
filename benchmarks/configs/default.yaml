@@ -1,0 +1,2645 @@
+profiles:
+  quick:
+    description: Single-seed smoke benchmark covering representative product, nesting and canonical KAN tasks.
+    seeds:
+    - 0
+    models:
+    - rulekan
+    - rulekan_fast
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - pysr
+    - operon
+    - anfis
+    tasks:
+    - fuzzy_ite_cross
+    - same_var_exp_sin
+    - pykan_exp_sin_square
+    data:
+      train_n: 600
+      val_n: 180
+      test_n: 240
+      max_real_samples: 1400
+    timeout_seconds: 900
+    model_config:
+      rulekan:
+        stage_scale: 0.04
+        iterative_pruning: true
+        prune_refit_steps: 20
+        prune_stabilize_rounds: 1
+        prune_stabilize_steps: 15
+        prune_candidates: 3
+        plateau_rounds: 1
+        plateau_steps: 35
+        symbolic: true
+        symbolic_gmp_steps: 25
+        symbolic_tuple_steps: 10
+        symbolic_commit_steps: 30
+        symbolic_commit_lbfgs: 0
+        symbolic_backfit_steps: 15
+        symbolic_backfit_lbfgs: 0
+        symbolic_final_steps: 40
+        symbolic_final_lbfgs: 0
+        symbolic_cleanup_seconds: 8
+        symbolic_cleanup_trials: 5
+        symbolic_trial_steps: 20
+        symbolic_max_rules: 12
+        symbolic_rank_continuation: true
+        symbolic_rank_continuation_caps:
+        - 3
+        - 6
+      vanilla_kan:
+        steps: 100
+        lr: 0.003
+      mlp:
+        width:
+        - 1
+        - 48
+        - 48
+        - 1
+        steps: 180
+        lr: 0.002
+      autosym:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      fastkan_autosym:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      gsr:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      fastkan_gsr:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      gmp:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      pysr:
+        niterations: 10
+        populations: 4
+        population_size: 30
+        maxsize: 28
+        timeout_seconds: 180
+        deterministic: true
+        parallelism: serial
+      operon:
+        population_size: 300
+        generations: 30
+        max_evaluations: 60000
+        optimizer_iterations: 3
+        max_length: 40
+        max_depth: 10
+        max_time: 180
+        n_threads: 1
+      rulekan_fast:
+        stage_scale: 0.04
+        iterative_pruning: true
+        prune_refit_steps: 20
+        prune_stabilize_rounds: 1
+        prune_stabilize_steps: 15
+        prune_candidates: 3
+        plateau_rounds: 1
+        plateau_steps: 35
+        symbolic: true
+        symbolic_gmp_steps: 25
+        symbolic_tuple_steps: 10
+        symbolic_commit_steps: 30
+        symbolic_commit_lbfgs: 0
+        symbolic_backfit_steps: 15
+        symbolic_backfit_lbfgs: 0
+        symbolic_final_steps: 40
+        symbolic_final_lbfgs: 0
+        symbolic_cleanup_seconds: 8
+        symbolic_cleanup_trials: 5
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        symbolic_trial_steps: 20
+        symbolic_max_rules: 6
+    shared_settings:
+      enabled: true
+      capacity: &id001
+        policy: fixed
+        width: 12
+        mult_units: 4
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  standard:
+    description: Three-seed capability benchmark over product, nesting, canonical KAN, Feynman-style and small real-data
+      tracks.
+    seeds:
+    - 0
+    - 1
+    - 2
+    models:
+    - rulekan
+    - rulekan_fast
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - pysr
+    - operon
+    - anfis
+    - vanilla_kan
+    - mlp
+    suites:
+    - fuzzy_rules
+    - synthetic_core
+    - nested_stress
+    - kan_canonical
+    - feynman
+    - real_small
+    data:
+      train_n: 1600
+      val_n: 400
+      test_n: 500
+      max_real_samples: 5000
+    timeout_seconds: 2400
+    model_config:
+      rulekan:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 12
+        symbolic_rank_continuation: true
+        symbolic_rank_continuation_caps:
+        - 3
+        - 6
+      vanilla_kan:
+        steps: 350
+        lr: 0.002
+      mlp:
+        width:
+        - 1
+        - 64
+        - 64
+        - 1
+        steps: 600
+        lr: 0.002
+      autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gmp:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      rulekan_fast:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_hybrid_hard_screening: true
+      symbolic_residual_structure_topk: 1
+      symbolic_joint_scale_refit: true
+      symbolic_rule_budget_at_least_width: true
+  full:
+    description: Five-seed full benchmark including UCI binary datasets used in KAN tabular benchmarking.
+    seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    models:
+    - rulekan
+    - rulekan_fast
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - pysr
+    - operon
+    - anfis
+    - vanilla_kan
+    - mlp
+    - multkan_deep_autosym
+    - fast_multkan_deep_autosym
+    - multkan_deep_gsr
+    - fast_multkan_deep_gsr
+    - multkan_deep_gmp
+    suites:
+    - fuzzy_rules
+    - synthetic_core
+    - nested_stress
+    - kan_canonical
+    - feynman
+    - real_small
+    - uci_binary
+    data:
+      train_n: 2500
+      val_n: 600
+      test_n: 800
+      max_real_samples: 12000
+    timeout_seconds: 5400
+    model_config:
+      rulekan:
+        stage_scale: 0.25
+        iterative_pruning: true
+        prune_refit_steps: 120
+        prune_stabilize_rounds: 3
+        prune_stabilize_steps: 50
+        prune_candidates: 5
+        plateau_rounds: 3
+        plateau_steps: 180
+        symbolic: true
+        symbolic_gmp_steps: 120
+        symbolic_tuple_steps: 40
+        symbolic_commit_steps: 180
+        symbolic_commit_lbfgs: 30
+        symbolic_backfit_steps: 90
+        symbolic_backfit_lbfgs: 15
+        symbolic_final_steps: 500
+        symbolic_final_lbfgs: 80
+        symbolic_cleanup_seconds: 75
+        symbolic_cleanup_trials: 24
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 12
+        symbolic_rank_continuation: true
+        symbolic_rank_continuation_caps:
+        - 3
+        - 6
+      vanilla_kan:
+        steps: 800
+        lr: 0.0015
+      mlp:
+        width:
+        - 1
+        - 96
+        - 96
+        - 1
+        steps: 1200
+        lr: 0.0015
+      autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gmp:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      rulekan_fast:
+        stage_scale: 0.25
+        iterative_pruning: true
+        prune_refit_steps: 120
+        prune_stabilize_rounds: 3
+        prune_stabilize_steps: 50
+        prune_candidates: 5
+        plateau_rounds: 3
+        plateau_steps: 180
+        symbolic: true
+        symbolic_gmp_steps: 120
+        symbolic_tuple_steps: 40
+        symbolic_commit_steps: 180
+        symbolic_commit_lbfgs: 30
+        symbolic_backfit_steps: 90
+        symbolic_backfit_lbfgs: 15
+        symbolic_final_steps: 500
+        symbolic_final_lbfgs: 80
+        symbolic_cleanup_seconds: 75
+        symbolic_cleanup_trials: 24
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  paper:
+    description: 'Paper-method comparison: RuleKAN, RuleKAN-RBF, and five MultKAN symbolic pipelines,
+      with paper reference training defaults.'
+    seeds:
+    - 1
+    - 2
+    - 3
+    models:
+    - rulekan
+    - rulekan_fast
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    suites:
+    - synthetic_core
+    - nested_stress
+    - kan_canonical
+    - feynman
+    data:
+      train_n: 2000
+      val_n: 400
+      test_n: 1000
+      max_real_samples: 5000
+    timeout_seconds: 5400
+    model_config:
+      rulekan:
+        stage_scale: 0.12
+        n_rules: 15
+        grid: 12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_max_rules: 15
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_trial_steps: 55
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+      autosym:
+        width_additive: 5
+        mult_units: 2
+        grid: 20
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        symbolic_trial_steps: 100
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      fastkan_autosym:
+        width_additive: 5
+        mult_units: 2
+        grid: 20
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        symbolic_trial_steps: 100
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      gsr:
+        width_additive: 5
+        mult_units: 2
+        grid: 20
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        symbolic_trial_steps: 100
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      fastkan_gsr:
+        width_additive: 5
+        mult_units: 2
+        grid: 20
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        symbolic_trial_steps: 100
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      gmp:
+        width_additive: 5
+        mult_units: 2
+        grid: 20
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        symbolic_trial_steps: 100
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      rulekan_fast:
+        stage_scale: 0.12
+        n_rules: 15
+        grid: 12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_max_rules: 15
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_trial_steps: 55
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+    shared_settings:
+      enabled: false
+      reason: paper reference configuration uses m=5, q=2 and the exact 25-operator library
+  research:
+    description: Compact three-seed main symbolic-regression benchmark. It includes the validation-gated
+      compositional RuleKAN and SISP variants, one representative RuleKAN OMP variant, and one deep baseline;
+      redundant extractor/backbone cross-products are moved to explicit ablation profiles.
+    seeds:
+    - 0
+    - 1
+    - 2
+    models:
+    - rulekan
+    - rulekan_comp
+    - rulekan_adaptive
+    - rulekan_fast
+    - rulekan_omp_full
+    - sisp
+    - sisp_comp
+    - power_rulekan
+    - power_rulekan_comp
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - srkan
+    - pysr
+    - operon
+    - anfis
+    - multkan_deep_gsr
+    suites:
+    - fuzzy_rules
+    - synthetic_core
+    - power_expression_stress
+    - nested_stress
+    - kan_canonical
+    - feynman
+    - real_small
+    data:
+      train_n: 1600
+      val_n: 400
+      test_n: 500
+      max_real_samples: 5000
+    timeout_seconds: 2400
+    model_config:
+      rulekan:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 12
+        # SR-inspired rescues are part of the default RuleKAN/SISP symbolic stage.
+        # They are validation-gated and run once after rank continuation.
+        symbolic_low_dimensional_family_rescue: true
+        symbolic_low_dimensional_family_refine_topk: 18
+        symbolic_low_dimensional_final_topk: 5
+        # Exhaustive two-rule complementary search for small problems. Every
+        # branch-family pair gets a cheap joint fit before pruning; RuleKAN
+        # remains inside its learned-support contract while SISP stays free.
+        symbolic_complementary_two_rule_rescue: true
+        symbolic_complementary_two_rule_max_input_dim: 2
+        symbolic_complementary_two_rule_coarse_global_topk: 16
+        # Deep-refit the strongest coarse joint families as well as the cheap
+        # local winners, preventing slow-converging correct families from dying.
+        symbolic_complementary_two_rule_coarse_final_topk: 32
+        symbolic_complementary_two_rule_seed_restarts: 3
+        symbolic_complementary_two_rule_local_polish_steps: 28
+        symbolic_complementary_two_rule_local_polish_lr: 0.01
+        symbolic_complementary_two_rule_local_lbfgs_topk: 32
+        symbolic_complementary_two_rule_local_lbfgs_steps: 35
+        symbolic_complementary_two_rule_final_topk: 10
+        symbolic_complementary_two_rule_final_steps: 240
+        symbolic_complementary_two_rule_final_lbfgs: 50
+        symbolic_product_partition_rescue: true
+        symbolic_product_partition_branch_pool: 72
+        symbolic_product_partition_pair_beam: 28
+        symbolic_recursive_partition_rescue: true
+        symbolic_recursive_partition_leaf_topk: 10
+        symbolic_recursive_partition_coarse_topk: 16
+        symbolic_recursive_partition_shallow_topk: 8
+        symbolic_recursive_partition_deep_topk: 3
+        symbolic_recursive_partition_deep_steps: 500
+        symbolic_recursive_partition_deep_lbfgs: 100
+        symbolic_recursive_partition_max_samples: 384
+        symbolic_gate_aware_support_augmentation: true
+        symbolic_validation_rescue_support_subset_closure: true
+        symbolic_precision_polish: true
+        symbolic_precision_polish_steps: 220
+        symbolic_precision_polish_lbfgs: 80
+        symbolic_rank_continuation: true
+        symbolic_rank_continuation_caps:
+        - 3
+        - 6
+      vanilla_kan:
+        steps: 350
+        lr: 0.002
+      mlp:
+        width:
+        - 1
+        - 64
+        - 64
+        - 1
+        steps: 600
+        lr: 0.002
+      autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gmp:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      rulekan_fast:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_omp_linear:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_linear
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_omp_nonlinear:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_nonlinear
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_omp_full:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_full
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_graph:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        graph_redundancy: 2.0e-05
+        contribution_correlation_threshold: 0.97
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_fast_omp_linear:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        pursuit_mode: omp_linear
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      srkan:
+        result_threshold: 1.0e-6
+        simpl_threshold: 0.01
+        functions:
+        - all
+        do_rounding: true
+        brute_force: true
+        simplifications: true
+        manipulate_output:
+        - inv
+        - square
+        - sqrt
+        - log
+        combination_kan_types:
+        - [sum, sum]
+        - [sum, mult]
+        - [mult, mult]
+        use_adam: true
+        use_bfgs: true
+        n_grids: [5, 10]
+        regularization_params: [0.0001, 1.0, 2.0, 1.0]
+        rand_constants: true
+        random_iterations: 10
+        backward_elim: true
+        verbosity: 0
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_hybrid_hard_screening: true
+      symbolic_residual_structure_topk: 1
+      symbolic_joint_scale_refit: true
+      symbolic_rule_budget_at_least_width: true
+  long_expression:
+    extends: research
+    description: Three-seed near-capacity symbolic-regression stress test with 39-node target expressions.
+    suites:
+    - expression_length_stress
+    data:
+      train_n: 2400
+      val_n: 600
+      test_n: 800
+      max_real_samples: 5000
+    timeout_seconds: 3600
+    model_config:
+      # The additive target exactly saturates this 12-rule budget.
+      rulekan:
+        symbolic_max_rules: 12
+      rulekan_fast:
+        symbolic_max_rules: 12
+      # Both targets are 39 binary expression-tree nodes, immediately below these
+      # external SR complexity ceilings.
+      pysr:
+        maxsize: 40
+        niterations: 100
+        populations: 8
+        population_size: 50
+        deterministic: true
+        parallelism: serial
+      operon:
+        max_length: 50
+        max_depth: 12
+        population_size: 1000
+        generations: 250
+        max_evaluations: 500000
+        optimizer_iterations: 5
+        n_threads: 1
+
+  fuzzy:
+    description: Compact three-seed fuzzy-rule benchmark. Full RuleKAN extractor variants are available in fuzzy_omp_ablation/fuzzy_exhaustive.
+    seeds:
+    - 0
+    - 1
+    - 2
+    models:
+    - rulekan
+    - rulekan_fast
+    - rulekan_omp_full
+    - rulekan_fast_omp_full
+    - power_rulekan
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - pysr
+    - operon
+    - anfis
+    suites:
+    - fuzzy_rules
+    data:
+      train_n: 1600
+      val_n: 400
+      test_n: 500
+      max_real_samples: 5000
+    timeout_seconds: 2400
+    model_config:
+      rulekan:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 12
+        symbolic_rank_continuation: true
+        symbolic_rank_continuation_caps:
+        - 3
+        - 6
+      vanilla_kan:
+        steps: 350
+        lr: 0.002
+      mlp:
+        width:
+        - 1
+        - 64
+        - 64
+        - 1
+        steps: 600
+        lr: 0.002
+      autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gmp:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      rulekan_fast:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_omp_linear:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_linear
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_omp_nonlinear:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_nonlinear
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_omp_full:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_full
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_graph:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        graph_redundancy: 2.0e-05
+        contribution_correlation_threshold: 0.97
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      rulekan_fast_omp_linear:
+        stage_scale: 0.24
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 4
+        plateau_steps: 100
+        plateau_patience: 2
+        numeric_lbfgs_steps: 40
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        pursuit_mode: omp_linear
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_hybrid_hard_screening: true
+      symbolic_residual_structure_topk: 1
+      symbolic_joint_scale_refit: true
+      symbolic_rule_budget_at_least_width: true
+  deep_multkan_quick:
+    description: One-seed smoke study of shallow versus late-hidden-layer multiplication on representative nested
+      tasks.
+    seeds:
+    - 0
+    models:
+    - gsr
+    - multkan_deep_gsr
+    - fastkan_gsr
+    - fast_multkan_deep_gsr
+    - gmp
+    - multkan_deep_gmp
+    tasks:
+    - fuzzy_nested_tree
+    - nested_cross_sin_product
+    - nested_cross_oscillator
+    - pykan_exp_sin_square
+    data:
+      train_n: 400
+      val_n: 120
+      test_n: 160
+      max_real_samples: 800
+    timeout_seconds: 1200
+    model_config:
+      gsr: &id002
+        steps: 20
+        lr: 0.01
+        lamb: 0.0
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 3
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      fastkan_gsr: *id002
+      gmp: *id002
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  deep_multkan:
+    description: Three-seed architecture study comparing shallow MultKAN multiplication with multiplication in a
+      later hidden layer.
+    seeds:
+    - 0
+    - 1
+    - 2
+    models:
+    - autosym
+    - multkan_deep_autosym
+    - fastkan_autosym
+    - fast_multkan_deep_autosym
+    - gsr
+    - multkan_deep_gsr
+    - fastkan_gsr
+    - fast_multkan_deep_gsr
+    - gmp
+    - multkan_deep_gmp
+    suites:
+    - fuzzy_rules
+    - nested_stress
+    - synthetic_core
+    - kan_canonical
+    - feynman
+    data:
+      train_n: 1600
+      val_n: 400
+      test_n: 500
+      max_real_samples: 5000
+    timeout_seconds: 3600
+    model_config:
+      autosym: &id003
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      fastkan_autosym: *id003
+      gsr: *id003
+      fastkan_gsr: *id003
+      gmp: *id003
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  ablation_quick:
+    description: Single-seed component-ablation smoke benchmark; fuzzy rules run first.
+    seeds:
+    - 0
+    models:
+    - rulekan
+    - rulekan_no_product
+    - rulekan_no_pruning
+    - rulekan_no_gmp
+    - rulekan_no_product_no_pruning
+    - rulekan_no_product_no_gmp
+    - rulekan_no_pruning_no_gmp
+    - rulekan_no_product_no_pruning_no_gmp
+    - rulekan_one_shot_prune
+    - rulekan_no_backfit
+    - rulekan_no_self_product
+    - rulekan_fast
+    - rulekan_omp_linear
+    - rulekan_graph
+    tasks:
+    - fuzzy_ite_cross
+    - fuzzy_ite_same_variable
+    - same_var_exp_sin
+    - cross_log_cos
+    - nested_cross_sin_product
+    - feynman_kinetic
+    data:
+      train_n: 600
+      val_n: 180
+      test_n: 240
+      max_real_samples: 1400
+    timeout_seconds: 900
+    model_config:
+      rulekan:
+        stage_scale: 0.04
+        iterative_pruning: true
+        prune_refit_steps: 20
+        prune_stabilize_rounds: 1
+        prune_stabilize_steps: 15
+        prune_candidates: 3
+        plateau_rounds: 1
+        plateau_steps: 35
+        symbolic: true
+        symbolic_gmp_steps: 25
+        symbolic_tuple_steps: 10
+        symbolic_commit_steps: 30
+        symbolic_commit_lbfgs: 0
+        symbolic_backfit_steps: 15
+        symbolic_backfit_lbfgs: 0
+        symbolic_final_steps: 40
+        symbolic_final_lbfgs: 0
+        symbolic_cleanup_seconds: 8
+        symbolic_cleanup_trials: 5
+        use_gmp_preselection: true
+        allow_symbolic_self_products: true
+        symbolic_backfit: true
+        pruning_mode: iterative
+        symbolic_trial_steps: 20
+        symbolic_max_rules: 6
+      rulekan_fast:
+        stage_scale: 0.04
+        iterative_pruning: true
+        prune_refit_steps: 20
+        prune_stabilize_rounds: 1
+        prune_stabilize_steps: 15
+        prune_candidates: 3
+        plateau_rounds: 1
+        plateau_steps: 35
+        symbolic: true
+        symbolic_gmp_steps: 25
+        symbolic_tuple_steps: 10
+        symbolic_commit_steps: 30
+        symbolic_commit_lbfgs: 0
+        symbolic_backfit_steps: 15
+        symbolic_backfit_lbfgs: 0
+        symbolic_final_steps: 40
+        symbolic_final_lbfgs: 0
+        symbolic_cleanup_seconds: 8
+        symbolic_cleanup_trials: 5
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        symbolic_trial_steps: 20
+        symbolic_max_rules: 6
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  ablation:
+    extends: research
+    description: Three-seed RuleKAN component ablation using the research baseline configuration. The 2^3 factorial isolates sum-product structure, iterative pruning, and GMP; additional variants isolate backfitting, repeated-variable symbolic products, numerical basis, pursuit mode, and graph redundancy controls.
+    models:
+    - rulekan
+    - rulekan_no_product
+    - rulekan_no_pruning
+    - rulekan_no_gmp
+    - rulekan_no_product_no_pruning
+    - rulekan_no_product_no_gmp
+    - rulekan_no_pruning_no_gmp
+    - rulekan_no_product_no_pruning_no_gmp
+    - rulekan_one_shot_prune
+    - rulekan_no_backfit
+    - rulekan_no_self_product
+    - rulekan_fast
+    - rulekan_omp_linear
+    - rulekan_graph
+    suites: []
+    tasks:
+    - fuzzy_ite_cross
+    - fuzzy_ite_same_variable
+    - fuzzy_nested_tree
+    - fuzzy_product_branches
+    - same_var_exp_sin
+    - two_same_var_mechanisms
+    - cross_log_cos
+    - mixed_rank4
+    - nested_same_sin_exp
+    - nested_cross_sin_product
+    - pykan_exp_sin_square
+    - pykan_singularity
+    - feynman_kinetic
+    - feynman_gaussian
+  width_sensitivity_quick:
+    description: Single-seed shared-capacity sensitivity smoke test. The same width W is used for RuleKAN rule slots
+      and MultKAN additive/multiplication units.
+    seeds:
+    - 0
+    models:
+    - rulekan
+    - rulekan_fast
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - multkan_deep_gsr
+    - fast_multkan_deep_gsr
+    tasks:
+    - fuzzy_ite_cross
+    - same_var_exp_sin
+    - cross_log_cos
+    - nested_cross_sin_product
+    data:
+      train_n: 600
+      val_n: 180
+      test_n: 240
+      max_real_samples: 1400
+    timeout_seconds: 1200
+    model_config:
+      rulekan:
+        stage_scale: 0.04
+        iterative_pruning: true
+        prune_refit_steps: 20
+        prune_stabilize_rounds: 1
+        prune_stabilize_steps: 15
+        prune_candidates: 3
+        plateau_rounds: 1
+        plateau_steps: 35
+        symbolic: true
+        symbolic_gmp_steps: 25
+        symbolic_tuple_steps: 10
+        symbolic_commit_steps: 30
+        symbolic_commit_lbfgs: 0
+        symbolic_backfit_steps: 15
+        symbolic_backfit_lbfgs: 0
+        symbolic_final_steps: 40
+        symbolic_final_lbfgs: 0
+        symbolic_cleanup_seconds: 8
+        symbolic_cleanup_trials: 5
+      vanilla_kan:
+        steps: 100
+        lr: 0.003
+      mlp:
+        width:
+        - 1
+        - 48
+        - 48
+        - 1
+        steps: 180
+        lr: 0.002
+      autosym:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      fastkan_autosym:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      gsr:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      fastkan_gsr:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      gmp:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 0
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 5
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      rulekan_fast:
+        stage_scale: 0.04
+        iterative_pruning: true
+        prune_refit_steps: 20
+        prune_stabilize_rounds: 1
+        prune_stabilize_steps: 15
+        prune_candidates: 3
+        plateau_rounds: 1
+        plateau_steps: 35
+        symbolic: true
+        symbolic_gmp_steps: 25
+        symbolic_tuple_steps: 10
+        symbolic_commit_steps: 30
+        symbolic_commit_lbfgs: 0
+        symbolic_backfit_steps: 15
+        symbolic_backfit_lbfgs: 0
+        symbolic_final_steps: 40
+        symbolic_final_lbfgs: 0
+        symbolic_cleanup_seconds: 8
+        symbolic_cleanup_trials: 5
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+    shared_settings:
+      enabled: true
+      capacity:
+        policy: fixed
+        width: 8
+        mult_fraction: 0.375
+        min_mult_units: 2
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+    width_values:
+    - 6
+    - 8
+    - 10
+    - 12
+  width_sensitivity:
+    description: Three-seed shared-capacity width sensitivity analysis. Width W in {6,8,10,12,16,24} is applied consistently
+      to RuleKAN rule slots and MultKAN additive/multiplication units.
+    seeds:
+    - 0
+    - 1
+    - 2
+    models:
+    - rulekan
+    - rulekan_fast
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - multkan_deep_autosym
+    - fast_multkan_deep_autosym
+    - multkan_deep_gsr
+    - fast_multkan_deep_gsr
+    - multkan_deep_gmp
+    data:
+      train_n: 1600
+      val_n: 400
+      test_n: 500
+      max_real_samples: 5000
+    timeout_seconds: 5400
+    model_config:
+      rulekan:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+      vanilla_kan:
+        steps: 350
+        lr: 0.002
+      mlp:
+        width:
+        - 1
+        - 64
+        - 64
+        - 1
+        steps: 600
+        lr: 0.002
+      autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      fastkan_autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      fastkan_gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      gmp:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+      rulekan_fast:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+      rulekan_omp_linear:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_linear
+      rulekan_omp_nonlinear:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_nonlinear
+      rulekan_omp_full:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        pursuit_mode: omp_full
+      rulekan_graph:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        graph_redundancy: 2.0e-05
+        contribution_correlation_threshold: 0.97
+      rulekan_fast_omp_linear:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        rbf_train_grid: true
+        rbf_train_width: true
+        rbf_width_scale: 1.0
+        pursuit_mode: omp_linear
+    shared_settings:
+      enabled: true
+      capacity:
+        policy: fixed
+        width: 8
+        mult_fraction: 0.375
+        min_mult_units: 2
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+    tasks:
+    - fuzzy_ite_cross
+    - fuzzy_nested_tree
+    - same_var_exp_sin
+    - cross_log_cos
+    - three_way_product
+    - mixed_rank4
+    - nested_cross_sin_product
+    - feynman_lorentz_mix
+    width_values:
+    - 6
+    - 8
+    - 10
+    - 12
+    - 16
+    - 24
+  library_sensitivity_quick:
+    description: Controlled symbolic-library sensitivity at fixed overcomplete neural width W=12.
+    seeds:
+    - 0
+    models:
+    - rulekan
+    - autosym
+    - gsr
+    - gmp
+    tasks:
+    - fuzzy_ite_cross
+    - mixed_rank4
+    - three_way_product
+    - pykan_exp_sin_square
+    library_values:
+    - core14
+    - medium20
+    - research26
+    data:
+      train_n: 600
+      val_n: 180
+      test_n: 240
+      max_real_samples: 1400
+    timeout_seconds: 2400
+    model_config:
+      rulekan:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 2
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 8
+        top_k_gates: 4
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 2
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 8
+        top_k_gates: 4
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gmp:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 2
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 8
+        top_k_gates: 4
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  controlled_compare:
+    description: Focused controlled symbolic-regression comparison using W=12 and the common 14-symbol target-complete
+      library.
+    seeds:
+    - 0
+    models:
+    - rulekan
+    - autosym
+    - gsr
+    - gmp
+    tasks:
+    - fuzzy_ite_cross
+    - mixed_rank4
+    - three_way_product
+    - pykan_exp_sin_square
+    data:
+      train_n: 600
+      val_n: 180
+      test_n: 240
+      max_real_samples: 1400
+    timeout_seconds: 2400
+    model_config:
+      rulekan:
+        stage_scale: 0.12
+        iterative_pruning: true
+        prune_refit_steps: 60
+        prune_stabilize_rounds: 2
+        prune_stabilize_steps: 30
+        prune_candidates: 4
+        plateau_rounds: 2
+        plateau_steps: 100
+        symbolic: true
+        symbolic_gmp_steps: 70
+        symbolic_tuple_steps: 25
+        symbolic_commit_steps: 90
+        symbolic_commit_lbfgs: 10
+        symbolic_backfit_steps: 45
+        symbolic_backfit_lbfgs: 5
+        symbolic_final_steps: 160
+        symbolic_final_lbfgs: 25
+        symbolic_cleanup_seconds: 30
+        symbolic_cleanup_trials: 12
+        symbolic_trial_steps: 55
+        symbolic_max_rules: 8
+      autosym:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gsr:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+      gmp:
+        steps: 200
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 3
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 10
+        top_k_gates: 5
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 100
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  controlled_compare_quick:
+    description: 'Matched quick-budget comparison: fixed W=12, common 14-symbol target-complete library, same quick
+      optimization budgets as the quick comparison profile.'
+    seeds:
+    - 0
+    models:
+    - rulekan
+    - autosym
+    - gsr
+    - gmp
+    tasks:
+    - fuzzy_ite_cross
+    - same_var_exp_sin
+    - mixed_rank4
+    - three_way_product
+    - pykan_exp_sin_square
+    data:
+      train_n: 600
+      val_n: 180
+      test_n: 240
+      max_real_samples: 1400
+    timeout_seconds: 600
+    model_config:
+      rulekan:
+        stage_scale: 0.04
+        iterative_pruning: true
+        prune_refit_steps: 20
+        prune_stabilize_rounds: 1
+        prune_stabilize_steps: 15
+        prune_candidates: 3
+        plateau_rounds: 1
+        plateau_steps: 35
+        symbolic: true
+        symbolic_gmp_steps: 25
+        symbolic_tuple_steps: 10
+        symbolic_commit_steps: 30
+        symbolic_commit_lbfgs: 0
+        symbolic_backfit_steps: 15
+        symbolic_backfit_lbfgs: 0
+        symbolic_final_steps: 40
+        symbolic_final_lbfgs: 0
+        symbolic_cleanup_seconds: 8
+        symbolic_cleanup_trials: 5
+        symbolic_trial_steps: 20
+        symbolic_max_rules: 6
+      autosym:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 2
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 8
+        top_k_gates: 4
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      gsr:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 2
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 8
+        top_k_gates: 4
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+      gmp:
+        steps: 12
+        lr: 0.01
+        lamb: 0.01
+        prune_iters: 2
+        node_th: 0.1
+        edge_th: 0.0
+        gate_top_k_start: 8
+        top_k_gates: 4
+        gating_entropy: 0.001
+        gating_l1: 0.01
+        edge_policy: importance_desc
+        gmp_refinement_policy: importance_asc
+        symbolic_trial_steps: 2
+    shared_settings:
+      enabled: true
+      capacity: *id001
+      max_product_order: task
+      grid: 12
+      symbolic_library: target_core
+      symbolic_rule_budget_at_least_width: true
+  main:
+    extends: research
+    description: Alias for the compact primary research benchmark.
+  research_exhaustive:
+    extends: research
+    description: Legacy exhaustive research matrix retained for appendix/diagnostic use only.
+    models:
+    - rulekan
+    - rulekan_fast
+    - rulekan_omp_linear
+    - rulekan_omp_nonlinear
+    - rulekan_omp_full
+    - rulekan_graph
+    - rulekan_fast_omp_linear
+    - rulekan_fast_omp_nonlinear
+    - rulekan_fast_omp_full
+    - rulekan_fast_graph
+    - power_rulekan
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - pysr
+    - operon
+    - anfis
+    - multkan_deep_autosym
+    - fast_multkan_deep_autosym
+    - multkan_deep_gsr
+    - fast_multkan_deep_gsr
+    - multkan_deep_gmp
+  fuzzy_exhaustive:
+    extends: fuzzy
+    description: Legacy exhaustive fuzzy matrix retained for appendix/diagnostic use only.
+    models:
+    - rulekan
+    - rulekan_fast
+    - rulekan_omp_linear
+    - rulekan_omp_nonlinear
+    - rulekan_omp_full
+    - rulekan_graph
+    - rulekan_fast_omp_linear
+    - rulekan_fast_omp_nonlinear
+    - rulekan_fast_omp_full
+    - rulekan_fast_graph
+    - power_rulekan
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - pysr
+    - operon
+    - anfis
+  omp_ablation:
+    extends: research
+    description: RuleKAN symbolic-extractor ablation; not part of the primary benchmark.
+    models:
+    - rulekan
+    - rulekan_fast
+    - rulekan_omp_linear
+    - rulekan_omp_nonlinear
+    - rulekan_omp_full
+    - rulekan_graph
+    - rulekan_fast_omp_linear
+    - rulekan_fast_omp_nonlinear
+    - rulekan_fast_omp_full
+    - rulekan_fast_graph
+  fuzzy_omp_ablation:
+    extends: fuzzy
+    description: Fuzzy-only RuleKAN extractor ablation.
+    models:
+    - rulekan
+    - rulekan_fast
+    - rulekan_omp_linear
+    - rulekan_omp_nonlinear
+    - rulekan_omp_full
+    - rulekan_graph
+    - rulekan_fast_omp_linear
+    - rulekan_fast_omp_nonlinear
+    - rulekan_fast_omp_full
+    - rulekan_fast_graph
+  deep_ablation:
+    extends: research
+    description: Shallow-vs-deep MultKAN/FastKAN symbolic-pipeline ablation.
+    models:
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - multkan_deep_autosym
+    - fast_multkan_deep_autosym
+    - multkan_deep_gsr
+    - fast_multkan_deep_gsr
+    - multkan_deep_gmp
+  logic_compressed:
+    extends: main
+    description: Main benchmark with rollback-safe numerical logic compression before symbolic takeover. Keeps broad
+      symbolic search as fallback; compressed numerical structures are diagnostics, not a hard symbolic restriction.
+    model_config:
+      rulekan:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+      rulekan_fast:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+      rulekan_omp_full:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+      rulekan_fast_omp_full:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+  fuzzy_logic_compressed:
+    extends: fuzzy
+    description: Fuzzy benchmark with rollback-safe numerical logic compression for RuleKAN-derived methods.
+    model_config:
+      rulekan:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+      rulekan_fast:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+      rulekan_omp_full:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+      rulekan_fast_omp_full:
+        numeric_logic_compression: true
+        numeric_logic_min_rules: 1
+        numeric_logic_max_deletions: 0
+        numeric_logic_candidate_trials: 4
+        numeric_logic_lbfgs_steps: 20
+        numeric_logic_relative_rmse_tolerance: 0.25
+        numeric_logic_nrmse_tolerance: 0.006
+        symbolic_use_compressed_numeric_structures: false
+  power_expression_quick:
+    extends: quick
+    description: Focused RuleKAN/SISP/PowerRuleKAN benchmark for powers and reciprocals of whole learned subexpressions.
+    models:
+    - rulekan
+    - power_rulekan
+    - sisp
+    tasks:
+    - power_inv_bilinear
+    - power_inv_quadratic_sum
+    - power_square_affine_sum
+    - power_ratio_product
+    seeds:
+    - 0
+    - 1
+    - 2
+    data:
+      train_n: 500
+      val_n: 140
+      test_n: 180
+      max_real_samples: 1200
+    timeout_seconds: 900
+    model_config:
+      rulekan:
+        power_values:
+        - -2
+        - -1
+        - 2
+        power_reciprocal_margin: 0.02
+        power_target_epsilon: 1.0e-07
+        power_base_max_rules: 5
+        power_base_max_rules_per_structure: 2
+        power_base_gmp_steps: 14
+        power_base_gmp_topk: 4
+        power_base_gmp_unary_topk: 6
+        power_base_gmp_self_topk: 5
+        power_base_tuple_steps: 5
+        power_base_hard_tuples: 8
+        power_base_hard_beam: 48
+        power_base_hard_samples: 320
+        power_base_initial_pool: 20
+        power_base_pair_beam: 7
+        power_base_pair_steps: 25
+        power_base_consolidate_steps: 35
+        power_base_trial_steps: 12
+        power_base_commit_steps: 18
+        power_base_backfit_steps: 10
+        power_base_final_steps: 24
+        power_base_rescue_gmp_steps: 12
+        power_base_rescue_steps: 16
+        power_base_cleanup_seconds: 2.0
+        power_base_cleanup_trials: 3
+        power_outer_rules: 2
+        power_hard_polish_steps: 24
+        power_hard_polish_lr: 0.002
+        power_reciprocal_barrier: 0.02
+        power_ratio_enabled: true
+        power_ratio_pilot_ridge: 1.0e-05
+        power_ratio_pilot_supports: 2
+        power_ratio_base_max_rules: 4
+        power_ratio_cross_steps: 20
+        power_ratio_quotient_steps: 24
+        power_ratio_polish_lr: 0.002
+        power_ratio_barrier: 0.02
+  baseline_repair:
+    extends: research
+    description: Focused rerun profile for external Operon and trainable ANFIS baselines across the research regression matrix.
+    models:
+    - operon
+    - anfis
+
+  composition_ablation_quick:
+    extends: research
+    description: "Depth-2 symbolic composition rescue smoke comparison."
+    seeds: [0]
+    models: [rulekan, rulekan_comp, sisp, sisp_comp, power_rulekan, power_rulekan_comp, pysr, multkan_deep_gsr]
+    tasks: [nested_same_sin_exp, nested_same_tanh_sin, nested_cross_sin_product, nested_cross_oscillator, pykan_exp_sin_square, pykan_singularity, pykan_radial, same_var_exp_sin, cross_log_cos]
+    timeout_seconds: 2400
+
+  composition_ablation:
+    extends: composition_ablation_quick
+    description: "Three-seed depth-2 symbolic composition rescue comparison."
+    seeds: [0, 1, 2]
