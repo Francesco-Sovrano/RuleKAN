@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from symbolic_kan.power_rulekan import PowerRuleKAN, inverse_power_target, safe_integer_power
-from benchmarks.models import _linearized_ratio_pilot, _select_power_atoms, _merge_power_atoms
+from benchmarks.models import _linearized_ratio_pilot, _select_power_atoms, _merge_power_atoms, _learned_symbolic_rules
 
 
 class _ExprBase(nn.Module):
@@ -116,3 +116,13 @@ def test_power_rulekan_accepts_composed_symbolic_base():
         got = model(x)
     assert torch.allclose(got, expected, atol=1e-7)
     assert "sin" in str(model.symbolic_formula(variable_names=["x0"]))
+
+
+def test_fuzzy_structural_scoring_ignores_optimizer_scale_power_terms():
+    base = _ExprBase(lambda x: x[:, 0:1], lambda xs: xs[0])
+    tiny = PowerRuleKAN([base], [[(0, 2)]], scales=[1e-8], bias=0.0)
+    visible = PowerRuleKAN([base], [[(0, 2)]], scales=[1e-3], bias=0.0)
+    assert _learned_symbolic_rules(tiny) == []
+    rules = _learned_symbolic_rules(visible)
+    assert len(rules) == 1
+    assert rules[0][0]["operator"] == "__powered_outer_term__"
