@@ -645,6 +645,9 @@ def _sumproduct_symbolic_rules(model: SumProductKAN) -> list[list[dict[str, floa
     return rules
 
 
+_FUZZY_STRUCTURAL_ZERO_TOL = 5e-7
+
+
 def _learned_symbolic_rules(model) -> list[list[dict[str, float | int | str]]]:
     """Return the final model's canonical expanded fuzzy-rule view.
 
@@ -670,7 +673,10 @@ def _learned_symbolic_rules(model) -> list[list[dict[str, float | int | str]]]:
         rules: list[list[dict[str, float | int | str]]] = []
         for term_idx, term in enumerate(model.terms):
             if term_idx < int(model.term_scale.numel()):
-                if abs(float(model.term_scale[term_idx].detach().cpu())) <= 1e-12:
+                # Structural scoring uses the same optimizer-noise floor as
+                # formula canonicalization in benchmarks.aggregate. Terms below
+                # this scale are numerical residue, not additional fuzzy rules.
+                if abs(float(model.term_scale[term_idx].detach().cpu())) <= _FUZZY_STRUCTURAL_ZERO_TOL:
                     continue
             if len(term) == 1 and int(term[0][1]) == 1:
                 base_idx = int(term[0][0])
