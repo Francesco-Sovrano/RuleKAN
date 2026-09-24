@@ -22,10 +22,9 @@ from .sum_product_kan import (
 from .utils import SYMBOLIC_LIB
 
 
-_DEFAULT_OUTER = ("sin", "cos", "tanh", "exp", "sqrt")
+_DEFAULT_OUTER = ("sin", "cos", "tanh", "exp", "sqrt", "log", "1/x")
 _DEFAULT_UNARY = (
-    "x", "x^2", "exp", "sin", "cos", "tanh",
-    "log1p_sq", "sqrt1p_sq", "inv1p_sq",
+    "x", "x^2", "exp", "sin", "cos", "tanh", "sqrt", "log", "1/x", "1/x^2",
 )
 _DEFAULT_PAIR = ("x", "x^2", "sin", "cos", "exp", "tanh", "log", "sqrt")
 _LOW_COMPLEXITY_SUM = frozenset(("x", "x^2", "sin", "cos", "log", "sqrt"))

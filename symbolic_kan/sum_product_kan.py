@@ -60,9 +60,6 @@ _DEFAULT_SYMBOLIC_LIBRARY = (
     "cos",
     "tanh",
     "arctan",
-    "log1p_sq",
-    "sqrt1p_sq",
-    "inv1p_sq",
 )
 
 

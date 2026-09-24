@@ -42,7 +42,7 @@ def main() -> int:
     ap.add_argument("--edge-policy", default=None)
     ap.add_argument("--gmp-refinement-policy", default=None)
     ap.add_argument("--shared-width", default=None, type=int, help="override shared total width W for sensitivity sweeps")
-    ap.add_argument("--shared-library", default=None, help="override shared symbolic library (core14, medium20, research26)")
+    ap.add_argument("--shared-library", default=None, help="override shared symbolic library (core10, medium16, research26)")
     args = ap.parse_args()
 
     try:

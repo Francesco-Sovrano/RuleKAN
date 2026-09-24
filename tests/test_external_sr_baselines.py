@@ -125,3 +125,24 @@ def test_srkan_wrapper_uses_official_api_and_reports_formula(monkeypatch):
     assert seen["fit_shape"] == (24, 1)
     assert seen["kwargs"]["functions"] == ["linear"]
     assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+
+
+def test_srkan_target_core_contains_only_matched_elementary_atoms(monkeypatch):
+    from benchmarks.models import TARGET_CORE_SYMBOLIC_LIBRARY, _resolve_srkan_functions
+
+    native = {
+        "linear": object(), "square": object(), "inv_x": object(), "inv_x2": object(),
+        "sqrt": object(), "log": object(), "exp": object(), "sin": object(),
+        "cos": object(), "tanh": object(),
+    }
+    function_lib = types.SimpleNamespace(all_expr=dict(native))
+    univariate = types.ModuleType("srkan.function_libraries.univariate")
+    univariate.function_lib = function_lib
+    function_libraries = types.ModuleType("srkan.function_libraries")
+    monkeypatch.setitem(sys.modules, "srkan.function_libraries", function_libraries)
+    monkeypatch.setitem(sys.modules, "srkan.function_libraries.univariate", univariate)
+
+    out = _resolve_srkan_functions(types.SimpleNamespace(), ["target_core"])
+    assert tuple(out) == tuple(TARGET_CORE_SYMBOLIC_LIBRARY)
+    assert len(out) == 10
+    assert {"gaussian", "log1p_sq", "sqrt1p_sq", "inv1p_sq"}.isdisjoint(out)

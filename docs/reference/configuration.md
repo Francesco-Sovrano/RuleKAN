@@ -77,13 +77,13 @@ Accepted aliases include:
 
 ```text
 compact
-core / core14 / target_core / research
-medium / medium20
+core / core10 / target_core / research
+medium / medium16
 paper25
 research26 / full / full26
 ```
 
-`research` is an alias for the controlled 14-operator `core14` / `target_core` library. `research26` selects the larger 26-operator vocabulary.
+`research` is an alias for the controlled 10-operator elementary `core10` / `target_core` library. `research26` selects the larger 26-operator vocabulary.
 
 ## Command-line overrides
 

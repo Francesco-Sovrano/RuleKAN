@@ -1060,7 +1060,7 @@ profiles:
         result_threshold: 1.0e-6
         simpl_threshold: 0.01
         functions:
-        - all
+        - target_core
         do_rounding: true
         brute_force: true
         simplifications: true
@@ -2115,8 +2115,8 @@ profiles:
     - three_way_product
     - pykan_exp_sin_square
     library_values:
-    - core14
-    - medium20
+    - core10
+    - medium16
     - research26
     data:
       train_n: 600
@@ -2197,7 +2197,7 @@ profiles:
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
   controlled_compare:
-    description: Focused controlled symbolic-regression comparison using W=12 and the common 14-symbol target-complete
+    description: Focused controlled symbolic-regression comparison using W=12 and the common 10-symbol elementary
       library.
     seeds:
     - 0
@@ -2290,7 +2290,7 @@ profiles:
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
   controlled_compare_quick:
-    description: 'Matched quick-budget comparison: fixed W=12, common 14-symbol target-complete library, same quick
+    description: 'Matched quick-budget comparison: fixed W=12, common 10-symbol elementary library, same quick
       optimization budgets as the quick comparison profile.'
     seeds:
     - 0

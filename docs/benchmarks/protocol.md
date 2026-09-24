@@ -109,7 +109,7 @@ Additional profiles are defined for exhaustive method matrices and controlled an
 | `deep_multkan_quick`, `deep_multkan` | shallow/deep multiplication comparisons |
 | `ablation_quick` | one-seed reduced-budget ablation smoke test |
 | `width_sensitivity_quick` | one-seed reduced-budget width sweep over `W={6,8,10,12}` |
-| `library_sensitivity_quick` | symbolic vocabulary sweep over `core14`, `medium20`, and `research26` |
+| `library_sensitivity_quick` | symbolic vocabulary sweep over `core10`, `medium16`, and `research26` |
 | `controlled_compare`, `controlled_compare_quick` | matched-capacity comparisons |
 | `omp_ablation`, `fuzzy_omp_ablation` | RuleKAN pursuit/extractor variants |
 | `deep_ablation` | shallow/deep MultKAN symbolic pipelines |

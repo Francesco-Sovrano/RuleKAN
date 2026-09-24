@@ -134,3 +134,11 @@ def test_depth2_composition_rescue_recovers_nested_cross_oscillator_with_periodi
     with torch.no_grad():
         nrmse = float(torch.mean((result.model(data.test_x) - data.test_y) ** 2).sqrt() / data.test_y.std())
     assert nrmse < 5e-4
+
+
+def test_composition_defaults_rebuild_removed_compounds_from_elementary_outer_ops():
+    from symbolic_kan.composition_rulekan import _DEFAULT_OUTER, _DEFAULT_UNARY
+    removed = {"gaussian", "log1p_sq", "sqrt1p_sq", "inv1p_sq"}
+    assert removed.isdisjoint(_DEFAULT_UNARY)
+    assert {"exp", "sqrt", "log", "1/x"}.issubset(_DEFAULT_OUTER)
+    assert "x^2" in _DEFAULT_UNARY

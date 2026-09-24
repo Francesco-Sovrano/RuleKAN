@@ -423,6 +423,12 @@ def test_multkan_depth_comparison_outputs_are_generated(tmp_path: Path):
     assert abs(float(x.iloc[0]["deep_over_shallow_rmse"]) - 0.25) < 1e-12
 
 
+def test_research_srkan_uses_matched_target_core_library():
+    import yaml
+    cfg = yaml.safe_load(Path("benchmarks/configs/default.yaml").read_text())
+    assert cfg["profiles"]["research"]["model_config"]["srkan"]["functions"] == ["target_core"]
+
+
 def test_shared_capacity_resolver_uses_fixed_total_width_consistently():
     import yaml
     from benchmarks.models import (
@@ -436,6 +442,7 @@ def test_shared_capacity_resolver_uses_fixed_total_width_consistently():
     rk2, meta2 = resolve_shared_benchmark_config("rulekan", spec2, {}, shared)
     gsr2, _ = resolve_shared_benchmark_config("gsr", spec2, {}, shared)
     deep3, meta3 = resolve_shared_benchmark_config("multkan_deep_gsr", spec3, {}, shared)
+    sr2, srmeta = resolve_shared_benchmark_config("srkan", spec2, {"functions": ["all"]}, shared)
     assert meta2["shared_capacity_width"] == 12
     assert rk2["n_rules"] == 12
     assert gsr2["width_additive"] == 8 and gsr2["mult_units"] == 4
@@ -446,10 +453,12 @@ def test_shared_capacity_resolver_uses_fixed_total_width_consistently():
     assert deep3["deep_width_2"] + deep3["deep_mult_units"] == 12
     assert deep3["deep_mult_arity"] == 3
     assert rk2["grid"] == gsr2["grid"] == 12
+    assert srmeta["shared_capacity_width"] == 12
+    assert sr2["functions"] == ["target_core"]
     assert tuple(rk2["symbolic_library"]) == tuple(TARGET_CORE_SYMBOLIC_LIBRARY)
     assert tuple(gsr2["symbolic_library"]) == tuple(TARGET_CORE_SYMBOLIC_LIBRARY)
-    assert len(TARGET_CORE_SYMBOLIC_LIBRARY) == 14
-    assert len(MEDIUM_SYMBOLIC_LIBRARY) == 20
+    assert len(TARGET_CORE_SYMBOLIC_LIBRARY) == 10
+    assert len(MEDIUM_SYMBOLIC_LIBRARY) == 16
     assert set(TARGET_CORE_SYMBOLIC_LIBRARY).issubset(MEDIUM_SYMBOLIC_LIBRARY)
     assert set(MEDIUM_SYMBOLIC_LIBRARY).issubset(RESEARCH_SYMBOLIC_LIBRARY)
 
@@ -490,7 +499,7 @@ def test_library_sensitivity_profile_uses_nested_libraries():
     import yaml
     cfg = yaml.safe_load(Path("benchmarks/configs/default.yaml").read_text())
     p = cfg["profiles"]["library_sensitivity_quick"]
-    assert p["library_values"] == ["core14", "medium20", "research26"]
+    assert p["library_values"] == ["core10", "medium16", "research26"]
     assert p["shared_settings"]["capacity"]["width"] == 12
     assert p["models"] == ["rulekan", "autosym", "gsr", "gmp"]
 
@@ -538,7 +547,7 @@ def test_library_sensitivity_aggregator_outputs_csv_and_pdf(tmp_path: Path):
     runs = tmp_path / "runs"
     runs.mkdir()
     rows=[]
-    for size, rmse, sec, name in [(14,0.10,1.0,"core14"),(20,0.12,1.5,"medium20"),(26,0.16,2.2,"research26")]:
+    for size, rmse, sec, name in [(10,0.10,1.0,"core10"),(16,0.12,1.5,"medium16"),(26,0.16,2.2,"research26")]:
         rows.append({
             "status":"completed","suite":"synthetic_core","task":"same_var_exp_sin","task_type":"regression",
             "model":"rulekan","seed":0,"shared_symbolic_library_size":size,"shared_symbolic_library":name,
@@ -553,7 +562,7 @@ def test_library_sensitivity_aggregator_outputs_csv_and_pdf(tmp_path: Path):
     assert (tmp_path/"figures"/"library_sensitivity_rmse.pdf").exists()
     assert (tmp_path/"figures"/"library_sensitivity_runtime.pdf").exists()
     x=pd.read_csv(tmp_path/"library_sensitivity.csv")
-    assert set(x.shared_symbolic_library_size)=={14,20,26}
+    assert set(x.shared_symbolic_library_size)=={10,16,26}
 
 
 def test_shared_rulekan_symbolic_rule_budget_is_at_least_numeric_width():
@@ -565,10 +574,12 @@ def test_shared_rulekan_symbolic_rule_budget_is_at_least_numeric_width():
             assert sh.get("symbolic_rule_budget_at_least_width") is True, name
 
 
-def test_controlled_core_library_keeps_reciprocal_atoms():
+def test_controlled_core_library_is_elementary_and_keeps_reciprocals():
     from benchmarks.models import TARGET_CORE_SYMBOLIC_LIBRARY
-    required = {"1/x", "1/x^2", "inv1p_sq"}
-    assert required.issubset(set(TARGET_CORE_SYMBOLIC_LIBRARY))
+    required = {"x", "x^2", "1/x", "1/x^2", "sqrt", "log", "exp", "sin", "cos", "tanh"}
+    forbidden = {"gaussian", "log1p_sq", "sqrt1p_sq", "inv1p_sq"}
+    assert set(TARGET_CORE_SYMBOLIC_LIBRARY) == required
+    assert forbidden.isdisjoint(TARGET_CORE_SYMBOLIC_LIBRARY)
 
 
 def test_rulekan_shared_resolver_sets_symbolic_max_rules_to_width():
@@ -586,7 +597,7 @@ def test_rulekan_shared_resolver_sets_symbolic_max_rules_to_width():
     assert meta["shared_symbolic_max_rules"] == 12
 
 
-def test_research_profile_and_research_alias_use_core14_by_default():
+def test_research_profile_and_research_alias_use_core10_by_default():
     import yaml
     from benchmarks.models import resolve_shared_benchmark_config, TARGET_CORE_SYMBOLIC_LIBRARY
     cfg = yaml.safe_load(Path("benchmarks/configs/default.yaml").read_text())
@@ -594,15 +605,15 @@ def test_research_profile_and_research_alias_use_core14_by_default():
     assert shared["symbolic_library"] == "target_core"
     resolved, meta = resolve_shared_benchmark_config("rulekan", TASKS["same_var_exp_sin"], {}, shared)
     assert tuple(resolved["symbolic_library"]) == tuple(TARGET_CORE_SYMBOLIC_LIBRARY)
-    assert meta["shared_symbolic_library"] == "core14"
+    assert meta["shared_symbolic_library"] == "core10"
 
-    # Plain "research" now means the controlled research default; the wider
+    # Plain "research" means the controlled elementary default; the wider
     # distractor library must be requested explicitly as "research26".
     resolved2, meta2 = resolve_shared_benchmark_config(
         "rulekan", TASKS["same_var_exp_sin"], {}, shared, library_override="research"
     )
     assert tuple(resolved2["symbolic_library"]) == tuple(TARGET_CORE_SYMBOLIC_LIBRARY)
-    assert meta2["shared_symbolic_library"] == "core14"
+    assert meta2["shared_symbolic_library"] == "core10"
 
 
 def test_power_rulekan_replaces_rational_and_fast_factorial_registration():

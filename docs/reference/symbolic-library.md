@@ -23,10 +23,9 @@ sin
 cos
 tanh
 arctan
-log1p_sq
-sqrt1p_sq
-inv1p_sq
 ```
+
+Compound shortcuts are intentionally excluded from the compact default.
 
 ## Benchmark libraries
 
@@ -59,7 +58,7 @@ inv1p_sq
 
 The resulting research library has 26 operators.
 
-### `core14` / `target_core`
+### `core10` / `target_core`
 
 ```text
 x
@@ -72,17 +71,13 @@ exp
 sin
 cos
 tanh
-gaussian
-log1p_sq
-sqrt1p_sq
-inv1p_sq
 ```
 
-The shared benchmark alias `research` resolves to this target-complete 14-operator vocabulary. Use `research26` to request the larger distractor-rich library.
+The shared benchmark alias `research` resolves to this 10-operator elementary vocabulary. Compound forms such as `gaussian`, `log1p_sq`, `sqrt1p_sq`, and `inv1p_sq` are deliberately excluded so that they must be reconstructed compositionally. Legacy `core14` remains accepted as an alias for reproducibility of old command lines. Use `research26` to request the larger distractor-rich library.
 
-### `medium20`
+### `medium16`
 
-`core14` plus:
+`core10` plus:
 
 ```text
 x^3
@@ -92,6 +87,8 @@ x^5
 abs
 arctan
 ```
+
+Legacy `medium20` remains accepted as an alias.
 
 ## Protected squared operators
 

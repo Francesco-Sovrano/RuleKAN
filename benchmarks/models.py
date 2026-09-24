@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import inspect
 import math
 import tempfile
 import time
@@ -60,10 +61,10 @@ PAPER_SYMBOLIC_LIBRARY = (
     "arctan", "arcsin", "arccos", "arctanh", "gaussian",
 )
 
-# Shared research library.  The paper's constants 0/1 are excluded because
-# RuleKAN already has an explicit global bias and per-rule amplitude, while the
-# three protected squared primitives are added so that every benchmark target
-# that is declared in-class is representable by every symbolic pipeline.
+# Broader sensitivity library.  The paper's constants 0/1 are excluded because
+# RuleKAN already has an explicit global bias and per-rule amplitude.  This
+# optional library deliberately retains compound shortcuts; the controlled
+# benchmark below does not use them.
 RESEARCH_SYMBOLIC_LIBRARY = tuple(
     [name for name in PAPER_SYMBOLIC_LIBRARY if name not in {"0", "1"}]
     + ["log1p_sq", "sqrt1p_sq", "inv1p_sq"]
@@ -71,17 +72,23 @@ RESEARCH_SYMBOLIC_LIBRARY = tuple(
 
 COMPACT_SYMBOLIC_LIBRARY = (
     "x", "x^2", "x^3", "exp", "sin", "cos", "tanh", "arctan",
-    "log1p_sq", "sqrt1p_sq", "inv1p_sq",
 )
 
-# Nested libraries for controlled vocabulary-sensitivity experiments.
-# TARGET_CORE retains primitives needed by the benchmark's declared target
-# families (including the shallow gaussian atom); larger libraries add only
-# distractors, so library-size sweeps primarily test search ambiguity/cost.
+# Elementary target-complete vocabulary for controlled comparisons.  Compound
+# shortcuts such as gaussian, log(1+x^2), sqrt(1+x^2), and 1/(1+x^2) are
+# intentionally excluded and must be reconstructed by composition.
 TARGET_CORE_SYMBOLIC_LIBRARY = (
-    "x", "x^2", "1/x", "1/x^2", "sqrt", "log", "exp", "sin", "cos",
-    "tanh", "gaussian", "log1p_sq", "sqrt1p_sq", "inv1p_sq",
+    "x", "x^2", "1/x", "1/x^2", "sqrt", "log", "exp", "sin", "cos", "tanh",
 )
+
+# SR-KAN accepts a configurable univariate extraction library, but four of the
+# shared elementary atoms use different native names.
+_SRKAN_TARGET_CORE_ALIASES = {
+    "x": "linear",
+    "x^2": "square",
+    "1/x": "inv_x",
+    "1/x^2": "inv_x2",
+}
 
 MEDIUM_SYMBOLIC_LIBRARY = TARGET_CORE_SYMBOLIC_LIBRARY + (
     "x^3", "x^4", "x^5", "1/x^3", "abs", "arctan",
@@ -137,6 +144,7 @@ def resolve_shared_benchmark_config(
     is_rulekan = model_name.startswith("rulekan") or model_name.startswith("sisp") or model_name.startswith("power_rulekan")
     is_multkan = model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES
     is_anfis = model_name == "anfis"
+    is_srkan = model_name == "srkan"
     mult_units = 0
     additive_units = width
     if is_rulekan:
@@ -180,7 +188,7 @@ def resolve_shared_benchmark_config(
 
     lib_name = library_override if library_override is not None else sh.get("symbolic_library")
     resolved_lib_name = None
-    if lib_name is not None and (is_rulekan or is_multkan):
+    if lib_name is not None and (is_rulekan or is_multkan or is_srkan):
         if isinstance(lib_name, str):
             resolved_lib_name = lib_name
             if lib_name in {"research26", "full", "full26"}:
@@ -188,15 +196,14 @@ def resolve_shared_benchmark_config(
                 # condition; it is not the default for the research profile.
                 lib = list(RESEARCH_SYMBOLIC_LIBRARY)
                 resolved_lib_name = "research26"
-            elif lib_name in {"research", "target_core", "core", "core14"}:
-                # Controlled research defaults to the target-complete core14
-                # vocabulary.  Plain "research" is intentionally an alias for
-                # this default; use "research26" to request the larger library.
+            elif lib_name in {"research", "target_core", "core", "core10", "core14"}:
+                # Controlled research defaults to the elementary target-core
+                # vocabulary.  Legacy ``core14`` remains accepted as an alias.
                 lib = list(TARGET_CORE_SYMBOLIC_LIBRARY)
-                resolved_lib_name = "core14"
-            elif lib_name in {"medium", "medium20"}:
+                resolved_lib_name = "core10"
+            elif lib_name in {"medium", "medium16", "medium20"}:
                 lib = list(MEDIUM_SYMBOLIC_LIBRARY)
-                resolved_lib_name = "medium20"
+                resolved_lib_name = "medium16"
             elif lib_name == "compact":
                 lib = list(COMPACT_SYMBOLIC_LIBRARY)
             elif lib_name == "paper25":
@@ -207,6 +214,16 @@ def resolve_shared_benchmark_config(
             lib = [str(x) for x in lib_name]
             resolved_lib_name = f"custom{len(lib)}"
         out["symbolic_library"] = lib
+        if is_srkan:
+            # Keep SR-KAN on exactly the same elementary target-core vocabulary
+            # in the controlled benchmark.  Other shared-library overrides are
+            # not silently remapped to SR-KAN's differently named native atoms.
+            if resolved_lib_name == "core10":
+                out["functions"] = ["target_core"]
+            else:
+                raise ValueError(
+                    "SR-KAN shared-library matching currently supports only target_core/core10"
+                )
 
     if sh.get("lr") is not None and (is_rulekan or is_multkan or model_name == "vanilla_kan"):
         out["lr"] = float(sh["lr"])
@@ -1179,7 +1196,6 @@ def _train_rulekan_family(
         rbf_width_scale=float(cfg.get("rbf_width_scale", 1.0)),
         symbolic_library=tuple(cfg.get("symbolic_library", (
             "x", "x^2", "x^3", "exp", "sin", "cos", "tanh", "arctan",
-            "log1p_sq", "sqrt1p_sq", "inv1p_sq",
         ))),
         min_order=1,
         symbolic_gradient_scale=float(cfg.get("symbolic_gradient_scale", 4.0)),
@@ -3043,6 +3059,36 @@ def _srkan_invalid_symbolic_error(exc: BaseException) -> bool:
     ))
 
 
+def _resolve_srkan_functions(srkan_pkg, requested: Sequence[str]) -> List[str]:
+    """Resolve the elementary benchmark ``target_core`` vocabulary for SR-KAN.
+
+    The controlled library contains only elementary atoms.  Four use different
+    names in SR-KAN, so aliases are installed in its public function dictionary.
+    No compound benchmark-specific shortcuts are injected.
+    """
+    requested = list(requested)
+    if requested != ["target_core"]:
+        return requested
+
+    try:
+        from srkan.function_libraries.univariate import function_lib as srkan_function_lib
+    except Exception as exc:
+        raise ImportError(
+            "SR-KAN target_core matching requires the official SR-KAN function library"
+        ) from exc
+
+    lib = srkan_function_lib.all_expr
+    for benchmark_name, native_name in _SRKAN_TARGET_CORE_ALIASES.items():
+        if native_name not in lib:
+            raise RuntimeError(f"SR-KAN native function {native_name!r} is unavailable")
+        lib[benchmark_name] = lib[native_name]
+
+    missing = [name for name in TARGET_CORE_SYMBOLIC_LIBRARY if name not in lib]
+    if missing:
+        raise RuntimeError(f"SR-KAN target_core mapping is incomplete: {missing}")
+    return list(TARGET_CORE_SYMBOLIC_LIBRARY)
+
+
 def train_srkan(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
     """Official SR-KAN baseline (Bühler & Guillén-Gosálbez, 2026).
 
@@ -3081,7 +3127,9 @@ def train_srkan(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, A
         "scale_x": bool(cfg.get("scale_x", True)),
         "scale_y": bool(cfg.get("scale_y", True)),
         "unscale": bool(cfg.get("unscale", True)),
-        "functions": list(cfg.get("functions", ["all"])),
+        "functions": _resolve_srkan_functions(
+            srkan_pkg, cfg.get("functions", ["target_core"])
+        ),
         "exclude_functions": list(cfg.get("exclude_functions", [])),
         "brute_force": bool(cfg.get("brute_force", True)),
         "simplifications": bool(cfg.get("simplifications", True)),
@@ -3098,6 +3146,7 @@ def train_srkan(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, A
         "backward_elim": bool(cfg.get("backward_elim", True)),
         "verbosity": int(cfg.get("verbosity", 0)),
     }
+    
     requested_output_transforms = list(kwargs["manipulate_output"])
     safe_output_transforms, dropped_output_transforms = _safe_srkan_output_transforms(
         y_train, requested_output_transforms
@@ -3510,7 +3559,6 @@ def train_paper_pipeline(
         "multkan_width": str(model.width),
         "width_additive": width_additive,
         "mult_units": mult_units,
-        "resolved_hidden_capacity": int(cfg.get("_resolved_shared_width", width_additive)),
         "multiplication_placement": "late_hidden" if deep_late_multiplication else "first_hidden",
         "mult_arity": mult_arity,
     }
