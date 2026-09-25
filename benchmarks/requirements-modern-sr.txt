@@ -1,0 +1,8 @@
+# Additional contemporary symbolic-regression baselines.
+# PSE/PSRN: https://github.com/intell-sci-comput/PSE
+psrn
+# RILS-ROLS needs pybind11 when built from source on Linux.
+pybind11
+rils-rols
+# Official PyTorch refactor of DSO/uDSR (NeurIPS 2022 LINEAR/poly + GP meld).
+git+https://github.com/dso-org/deep-symbolic-optimization-pytorch.git#subdirectory=dso

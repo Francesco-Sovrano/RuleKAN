@@ -58,7 +58,7 @@ shared_settings:
     policy: fixed
     width: 12
     mult_units: 4
-  max_product_order: task
+  max_product_order: 3
   grid: 12
   symbolic_library: target_core
   symbolic_hybrid_hard_screening: true
@@ -67,7 +67,7 @@ shared_settings:
   symbolic_rule_budget_at_least_width: true
 ```
 
-`capacity.width` is total rule/hidden width, not product order. The shared resolver maps it to each compatible method family. `max_product_order: task` uses `TaskSpec.max_factors` for RuleKAN-style products.
+`capacity.width` is total rule/hidden width, not product order. The shared resolver maps it to each compatible method family. `max_product_order: 3` fixes the maximum product order across tasks rather than deriving it from target-specific `TaskSpec.max_factors` metadata.
 
 For width sweeps, `capacity.mult_fraction` and `capacity.min_mult_units` may replace a fixed `mult_units` count so MultKAN multiplication capacity scales with `W`.
 

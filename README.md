@@ -51,6 +51,12 @@ The benchmark dependency file includes the official SR-KAN implementation. To in
 python -m pip install -r benchmarks/requirements-srkan.txt
 ```
 
+PSE, RILS-ROLS, and uDSR can be installed separately with:
+
+```bash
+python -m pip install -r benchmarks/requirements-modern-sr.txt
+```
+
 ## Examples
 
 Run examples from the repository root as modules:
@@ -69,6 +75,7 @@ The executable benchmark definition is `benchmarks/configs/default.yaml`. The sh
 ```bash
 ./run_rulekan_benchmark.sh quick
 ./run_rulekan_benchmark.sh research
+./run_rulekan_benchmark.sh research_modern
 ./run_rulekan_benchmark.sh ablation
 ./run_rulekan_benchmark.sh fuzzy
 ./run_rulekan_benchmark.sh long_expression
@@ -81,7 +88,8 @@ The main profiles include:
 |---|---:|---:|---:|---|
 | `quick` | 1 | 3 | 10 | smoke run |
 | `standard` | 3 | 28 | 12 | broad capability benchmark |
-| `research` | 3 | 32 | 19 | full research matrix |
+| `research` | 3 | 32 | 19 | primary research matrix |
+| `research_modern` | 3 | 32 | 23 | research matrix + Symbolic-KAN, PSE, RILS-ROLS, uDSR |
 | `ablation` | 3 | 14 | 14 | RuleKAN component ablation |
 | `fuzzy` | 3 | 7 | 13 | fuzzy-rule benchmark |
 | `long_expression` | 3 | 2 | 19 | expression-length stress test |

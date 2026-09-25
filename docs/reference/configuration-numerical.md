@@ -7,7 +7,7 @@ These fields control the numerical `SumProductKAN` precursor used by RuleKAN-fam
 | Field | Meaning | Adapter default |
 |---|---|---|
 | `n_rules` | Number of numerical rule slots. Shared benchmark width overrides this for RuleKAN. | `max(10, 2*input_dim+4)` |
-| `max_factors_override` | Maximum factor slots per rule. Shared `max_product_order: task` sets this from `TaskSpec.max_factors`. | task `max_factors` |
+| `max_factors_override` | Maximum factor slots per rule. Shared `max_product_order: 3` fixes this at three in the controlled benchmark profiles. | task `max_factors` |
 | `grid` | Spline/RBF grid resolution. | `12` |
 | `k` | Spline order used by spline numerical factors. | `3` |
 | `grid_range` | Standardized input range used to initialize the numerical basis. | `[-2.5, 2.5]` |
@@ -18,7 +18,7 @@ These fields control the numerical `SumProductKAN` precursor used by RuleKAN-fam
 | `rbf_width_scale` | Initial RBF width scale. | `1.0` |
 | `init_factor_open_prob` | Initial probability that an optional factor gate is open. | `0.95` |
 
-The `research` profile overrides `stage_scale` to `0.24`; shared settings set `n_rules=12`, `grid=12`, and task-specific product order.
+The `research` profile overrides `stage_scale` to `0.24`; shared settings set `n_rules=12`, `grid=12`, and fixed product order `q=3`.
 
 ## Gradient stabilization and numerical sparsity
 

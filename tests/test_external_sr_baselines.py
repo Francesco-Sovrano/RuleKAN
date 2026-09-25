@@ -3,7 +3,10 @@ import types
 
 import numpy as np
 
-from benchmarks.models import TRAINERS, train_operon, train_pysr, train_srkan
+from benchmarks.models import (
+    TRAINERS, train_operon, train_pse, train_pysr, train_rils_rols, train_udsr,
+    train_srkan, train_symbolic_kan,
+)
 from benchmarks.specs import TASKS, make_synthetic_data
 
 
@@ -14,7 +17,7 @@ def _tiny_data():
 
 
 def test_evolutionary_symbolic_regressors_are_registered():
-    assert {"srkan", "pysr", "operon"}.issubset(TRAINERS)
+    assert {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "pysr", "operon"}.issubset(TRAINERS)
 
 
 def test_pysr_wrapper_uses_benchmark_data_and_reports_formula(monkeypatch):
@@ -146,3 +149,147 @@ def test_srkan_target_core_contains_only_matched_elementary_atoms(monkeypatch):
     assert tuple(out) == tuple(TARGET_CORE_SYMBOLIC_LIBRARY)
     assert len(out) == 10
     assert {"gaussian", "log1p_sq", "sqrt1p_sq", "inv1p_sq"}.isdisjoint(out)
+
+
+
+def test_symbolic_kan_wrapper_uses_vendored_official_training_and_exports_formula():
+    spec, data = _tiny_data()
+    run = train_symbolic_kan(
+        spec, data, 5,
+        {
+            "device": "cpu", "hidden_units": 2, "edges_per_unit": 1,
+            "num_blocks": 1, "lib": ["x", "sin"],
+            "epochs": 2, "adam_epochs": 1, "lbfgs_steps": 1,
+            "lbfgs_max_iter": 1, "use_lbfgs": True,
+            "middle_lbfgs_harden": False, "use_unit_gates": False,
+            "train_prim_bias": False, "diagnostic_plots": False,
+        },
+    )
+    assert run.model_name == "symbolic_kan"
+    assert run.extras["symbolic_backend"] == "symbolic_kan_official_github"
+    assert run.extras["symbolic_kan_exact_official_code"] is True
+    assert run.extras["symbolic_kan_training_routine"] == "train_regression_onehot"
+    assert run.extras["symbolic_kan_official_commit"] == "9481a82"
+    assert isinstance(run.extras["formula"], str) and run.extras["formula"]
+    assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+    assert run.metrics["symbolic_export_vs_official_rmse"] < 1e-5
+
+
+def test_pse_wrapper_uses_official_psrn_api_and_scores_exported_formula(monkeypatch):
+    seen = {}
+
+    class FakePSRNRegressor:
+        def __init__(self, **kwargs):
+            seen["kwargs"] = kwargs
+
+        def fit(self, x, y, **kwargs):
+            seen["fit_shape"] = tuple(x.shape)
+            seen["fit_kwargs"] = kwargs
+            return False, [("x0", 1.0, 0.0, 1)]
+
+        def display_expr_table(self, sort_by="mse"):
+            seen["sort_by"] = sort_by
+            return [("x0", 1.0, 0.0, 1)]
+
+    mod = types.ModuleType("psrn")
+    mod.PSRN_Regressor = FakePSRNRegressor
+    monkeypatch.setitem(sys.modules, "psrn", mod)
+
+    spec, data = _tiny_data()
+    run = train_pse(
+        spec, data, 5,
+        {"operators": ["Add", "Mul", "Identity"], "n_down_sample": 12,
+         "n_symbol_layers": 2, "extra_input_slots": 1, "use_cpu": True},
+    )
+    assert run.model_name == "pse"
+    assert run.extras["symbolic_backend"] == "pse_psrn_official"
+    assert run.extras["formula"] == "x0"
+    assert seen["fit_shape"] == (24, 1)
+    assert seen["kwargs"]["variables"] == ["x0"]
+    assert seen["fit_kwargs"]["n_down_sample"] == 12
+    assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+
+
+def test_rils_rols_wrapper_uses_public_sklearn_api(monkeypatch):
+    seen = {}
+
+    class FakeRILSROLSRegressor:
+        def __init__(self, max_fit_calls=100000, max_seconds=100,
+                     complexity_penalty=0.001, max_complexity=200,
+                     sample_size=0.1, verbose=False, random_state=0):
+            seen["kwargs"] = dict(
+                max_fit_calls=max_fit_calls, max_seconds=max_seconds,
+                complexity_penalty=complexity_penalty, max_complexity=max_complexity,
+                sample_size=sample_size, verbose=verbose, random_state=random_state,
+            )
+
+        def fit(self, x, y):
+            seen["fit_shape"] = tuple(np.asarray(x).shape)
+            return self
+
+        def predict(self, x):
+            return np.asarray(x)[:, 0]
+
+        def model_string(self):
+            return "x0"
+
+    pkg = types.ModuleType("rils_rols")
+    sub = types.ModuleType("rils_rols.rils_rols")
+    sub.RILSROLSRegressor = FakeRILSROLSRegressor
+    pkg.rils_rols = sub
+    monkeypatch.setitem(sys.modules, "rils_rols", pkg)
+    monkeypatch.setitem(sys.modules, "rils_rols.rils_rols", sub)
+
+    spec, data = _tiny_data()
+    run = train_rils_rols(
+        spec, data, 7,
+        {"max_fit_calls": 123, "max_seconds": 4, "max_complexity": 17,
+         "sample_size": 1.0},
+    )
+    assert run.model_name == "rils_rols"
+    assert run.extras["symbolic_backend"] == "rils_rols_official"
+    assert run.extras["formula"] == "x0"
+    assert seen["fit_shape"] == (24, 1)
+    assert seen["kwargs"]["max_fit_calls"] == 123
+    assert seen["kwargs"]["max_seconds"] == 4
+    assert seen["kwargs"]["max_complexity"] == 17
+    assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+
+
+def test_udsr_wrapper_enables_poly_and_gp_meld(monkeypatch):
+    import json
+    seen = {}
+
+    class FakeProgram:
+        def pretty(self):
+            return "sin(x1)"
+
+    class FakeDeepSymbolicRegressor:
+        def __init__(self, config=None):
+            seen["config_path"] = config
+            with open(config, "r", encoding="utf-8") as fh:
+                seen["config"] = json.load(fh)
+            self.program_ = FakeProgram()
+
+        def fit(self, x, y):
+            seen["fit_shape"] = tuple(np.asarray(x).shape)
+            return self
+
+        def predict(self, x):
+            return np.sin(np.asarray(x)[:, 0])
+
+    mod = types.ModuleType("dso")
+    mod.DeepSymbolicRegressor = FakeDeepSymbolicRegressor
+    mod.__version__ = "test"
+    monkeypatch.setitem(sys.modules, "dso", mod)
+
+    spec, data = _tiny_data()
+    run = train_udsr(spec, data, 11, {"n_samples": 1000, "batch_size": 50})
+    assert run.model_name == "udsr"
+    assert run.extras["symbolic_backend"] == "udsr_dso_official"
+    assert run.extras["formula"] == "sin(x0)"
+    assert seen["fit_shape"] == (24, 1)
+    assert "poly" in seen["config"]["task"]["function_set"]
+    assert seen["config"]["gp_meld"]["run_gp_meld"] is True
+    assert seen["config"]["training"]["n_samples"] == 1000
+    assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics

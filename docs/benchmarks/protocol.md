@@ -37,7 +37,7 @@ Profiles may enable `shared_settings` to align comparable controls across method
 - deep MultKAN preserves total width `W` in each configured hidden layer;
 - vanilla KAN receives hidden width `W`;
 - ANFIS uses `W` fuzzy rules when the shared capacity applies;
-- product arity remains task-specific through `TaskSpec.max_factors` when `max_product_order: task` is active.
+- product arity is fixed by `max_product_order`; the principal controlled profiles use `q=3` for every task.
 
 Shared settings can also align grid resolution, symbolic vocabulary, hard-screening controls, and minimum symbolic rule budget.
 
@@ -48,7 +48,7 @@ capacity:
   policy: fixed
   width: 12
   mult_units: 4
-max_product_order: task
+max_product_order: 3
 grid: 12
 symbolic_library: target_core
 symbolic_hybrid_hard_screening: true
@@ -156,7 +156,7 @@ Additional ablations isolate one-shot pruning, symbolic backfitting, repeated-va
 
 ## Research and width-sensitivity comparability
 
-`width_sensitivity` is not an exact `research` reproduction with only `W` changed. It shares the research seeds, synthetic data sizes, grid, task-dependent product order, and `target_core` symbolic vocabulary, but it uses a separate sensitivity schedule.
+`width_sensitivity` is not an exact `research` reproduction with only `W` changed. It shares the research seeds, synthetic data sizes, grid, fixed product order `q=3`, and `target_core` symbolic vocabulary, but it uses a separate sensitivity schedule.
 
 The principal differences from `research` are:
 
@@ -233,7 +233,9 @@ pyoperon==0.6.1
 
 SR-KAN is installed from the authors' GitHub repository; `benchmarks/requirements-srkan.txt` provides the narrow SR-KAN-only install. The unrelated PyPI package named `srkan` does not provide the API expected by the benchmark adapter.
 
-Selected external baselines are checked before job construction. Operon is import-tested through `pyoperon.sklearn`; SR-KAN is checked for the expected `regressor` and `SympyEvaluator` API; PySR installation is checked without importing the Julia bridge during preflight. Operator grammars and compute budgets are profile-controlled.
+Selected external baselines are checked before job construction. Operon is import-tested through `pyoperon.sklearn`; SR-KAN is checked for the expected `regressor` and `SympyEvaluator` API; PSE is checked through `psrn`; RILS-ROLS is checked through `rils_rols.rils_rols`; uDSR is checked through `dso`; PySR installation is checked without importing the Julia bridge during preflight. Operator grammars and compute budgets are profile-controlled.
+
+The `research_modern` profile adds Symbolic-KAN, PSE, RILS-ROLS, and uDSR to the primary research matrix. PSE, RILS-ROLS, and uDSR use their public/official packages directly. Symbolic-KAN uses the authors' vendored `Pub_Symbolic_KANs` source at commit `9481a82`; the adapter calls the upstream regression training routine and supplies the benchmark data without rewriting the optimization, selection, hardening, or LBFGS logic.
 
 ## Commands
 

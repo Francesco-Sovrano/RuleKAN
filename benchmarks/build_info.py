@@ -9,10 +9,13 @@ def benchmark_build_fingerprint(root: Path, config_path: Path | None = None) -> 
     root = Path(root).resolve()
     h = hashlib.sha256()
     candidates = []
-    for rel in ("symbolic_kan", "benchmarks"):
+    for rel in ("symbolic_kan", "benchmarks", "external/Pub_Symbolic_KANs"):
         base = root / rel
         if base.exists():
             candidates.extend(sorted(p for p in base.rglob("*.py") if "__pycache__" not in p.parts))
+            marker = base / "UPSTREAM_COMMIT.txt"
+            if marker.exists():
+                candidates.append(marker)
     for rel in ("VERSION", "requirements.txt", "benchmarks/configs/default.yaml"):
         p = root / rel
         if p.exists():

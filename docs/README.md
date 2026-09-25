@@ -103,7 +103,7 @@ GMP screens operator combinations. Hard exact-operator proposals, learned-suppor
 - synthetic train/validation/test sizes `1600/400/500`;
 - per-job timeout `2400` seconds;
 - shared numerical width `W=12` and grid `12`;
-- task-specific maximum product order;
+- fixed maximum product order `q=3`;
 - the 14-operator `target_core` symbolic library;
 - a symbolic rule budget at least as large as the shared width.
 

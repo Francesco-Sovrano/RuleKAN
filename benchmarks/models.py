@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import copy
 import inspect
+import json
 import math
+import re
 import tempfile
 import time
 from dataclasses import dataclass, field, replace
@@ -49,6 +51,9 @@ from symbolic_kan import (
 
 from .specs import BenchmarkData, TaskSpec
 from .anfis import CompactANFIS, fit_compact_anfis
+from .symbolic_kan_baseline import (
+    fit_official_symbolic_kan, official_formula, official_hardened_predict,
+)
 from symbolic_kan.composition_rulekan import ComposedRuleKAN, depth2_composition_rescue
 from symbolic_kan.sum_product_kan import _fully_symbolic_continuous_refit
 
@@ -79,6 +84,28 @@ COMPACT_SYMBOLIC_LIBRARY = (
 # intentionally excluded and must be reconstructed by composition.
 TARGET_CORE_SYMBOLIC_LIBRARY = (
     "x", "x^2", "1/x", "1/x^2", "sqrt", "log", "exp", "sin", "cos", "tanh",
+)
+
+# Native spellings/grammars used to align external symbolic-regression methods
+# with ``core10`` as closely as their public APIs permit.  For recursive-tree
+# methods, arithmetic operators are structural grammar rather than additional
+# unary shortcuts, so e.g. ``1/x^2`` may be composed from division + square.
+SYMBOLIC_KAN_TARGET_CORE_NATIVE = (
+    "x", "x2", "inv", "sqrtx", "log", "exp", "sin", "cos", "tanh",
+)
+PYSR_TARGET_CORE_UNARY = (
+    "square", "exp", "sin", "cos", "tanh", "sqrt", "log", "inv",
+)
+PYSR_TARGET_CORE_BINARY = ("+", "-", "*", "/")
+OPERON_TARGET_CORE_SYMBOLS = (
+    "add", "sub", "mul", "div", "constant", "variable", "square",
+    "exp", "sin", "cos", "tanh", "sqrt", "log",
+)
+PSE_TARGET_CORE_NATIVE = (
+    "Add", "Mul", "Sub", "Div", "Identity", "Sin", "Cos", "Exp", "Log", "Tanh",
+)
+UDSR_TARGET_CORE_NATIVE = (
+    "add", "sub", "mul", "div", "sin", "cos", "exp", "log", "poly",
 )
 
 # SR-KAN accepts a configurable univariate extraction library, but four of the
@@ -112,8 +139,8 @@ def resolve_shared_benchmark_config(
     ``W`` denotes *total hidden/rule width*, not product arity. RuleKAN receives
     W rule slots; shallow MultKAN receives additive+product units summing to W;
     each deep-MultKAN hidden layer has total width W; vanilla KAN receives W
-    hidden units. Product arity remains task-specific because it is a separate
-    representational property.
+    hidden units. Product arity is controlled independently through
+    ``shared_settings.max_product_order``.
 
     This intentionally overcomplete substrate is designed for experiments in
     which the symbolic-regression/extraction strategy is the treatment.
@@ -145,6 +172,12 @@ def resolve_shared_benchmark_config(
     is_multkan = model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES
     is_anfis = model_name == "anfis"
     is_srkan = model_name == "srkan"
+    is_symbolic_kan = model_name == "symbolic_kan"
+    is_pysr = model_name == "pysr"
+    is_operon = model_name == "operon"
+    is_pse = model_name == "pse"
+    is_udsr = model_name == "udsr"
+    is_rils_rols = model_name == "rils_rols"
     mult_units = 0
     additive_units = width
     if is_rulekan:
@@ -171,11 +204,24 @@ def resolve_shared_benchmark_config(
     elif model_name == "vanilla_kan":
         out["hidden"] = width
 
-    if str(sh.get("max_product_order", "task")) == "task":
-        out["mult_arity"] = int(spec.max_factors)
-        out["deep_mult_arity"] = int(spec.max_factors)
-        if is_rulekan and "max_factors_override" not in out:
-            out["max_factors_override"] = int(spec.max_factors)
+    product_order_setting = sh.get("max_product_order", "task")
+    if str(product_order_setting) == "task":
+        resolved_product_order = int(spec.max_factors)
+    else:
+        try:
+            resolved_product_order = int(product_order_setting)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "shared max_product_order must be 'task' or a positive integer"
+            ) from exc
+        if resolved_product_order < 1:
+            raise ValueError("shared max_product_order must be >= 1")
+
+    if is_multkan:
+        out["mult_arity"] = resolved_product_order
+        out["deep_mult_arity"] = resolved_product_order
+    if is_rulekan and "max_factors_override" not in out:
+        out["max_factors_override"] = resolved_product_order
 
     if sh.get("grid") is not None and (is_rulekan or is_multkan or model_name == "vanilla_kan"):
         out["grid"] = int(sh["grid"])
@@ -188,7 +234,14 @@ def resolve_shared_benchmark_config(
 
     lib_name = library_override if library_override is not None else sh.get("symbolic_library")
     resolved_lib_name = None
-    if lib_name is not None and (is_rulekan or is_multkan or is_srkan):
+    shared_native_library = None
+    shared_native_exact = None
+    shared_native_note = None
+    supports_shared_library = (
+        is_rulekan or is_multkan or is_srkan or is_symbolic_kan or is_pysr
+        or is_operon or is_pse or is_udsr or is_rils_rols
+    )
+    if lib_name is not None and supports_shared_library:
         if isinstance(lib_name, str):
             resolved_lib_name = lib_name
             if lib_name in {"research26", "full", "full26"}:
@@ -213,17 +266,96 @@ def resolve_shared_benchmark_config(
         else:
             lib = [str(x) for x in lib_name]
             resolved_lib_name = f"custom{len(lib)}"
-        out["symbolic_library"] = lib
-        if is_srkan:
+        if is_rulekan or is_multkan:
+            out["symbolic_library"] = lib
+            shared_native_library = list(lib)
+            shared_native_exact = True
+        elif is_srkan:
             # Keep SR-KAN on exactly the same elementary target-core vocabulary
             # in the controlled benchmark.  Other shared-library overrides are
             # not silently remapped to SR-KAN's differently named native atoms.
             if resolved_lib_name == "core10":
                 out["functions"] = ["target_core"]
+                shared_native_library = [
+                    _SRKAN_TARGET_CORE_ALIASES.get(name, name)
+                    for name in TARGET_CORE_SYMBOLIC_LIBRARY
+                ]
+                shared_native_exact = True
             else:
                 raise ValueError(
                     "SR-KAN shared-library matching currently supports only target_core/core10"
                 )
+        elif is_symbolic_kan:
+            if resolved_lib_name != "core10":
+                raise ValueError(
+                    "Symbolic-KAN shared-library matching currently supports only target_core/core10"
+                )
+            # The official Symbolic-KAN code has no one-step inverse-square
+            # primitive.  With the benchmark's two symbolic blocks it can form
+            # 1/x^2 compositionally from x2+inv (or inv+x2).  Its sqrt/log/inv
+            # implementations are protected versions of the corresponding
+            # elementary atoms, consistent with the protected benchmark KAN
+            # evaluations.  Do not modify the upstream primitive library.
+            out["lib"] = list(SYMBOLIC_KAN_TARGET_CORE_NATIVE)
+            shared_native_library = list(SYMBOLIC_KAN_TARGET_CORE_NATIVE)
+            shared_native_exact = False
+            shared_native_note = (
+                "official Symbolic-KAN has no native 1/x^2 atom; it is constructible "
+                "across two blocks from x2 and inv"
+            )
+        elif is_pysr:
+            if resolved_lib_name != "core10":
+                raise ValueError("PySR shared-library matching currently supports only target_core/core10")
+            out["binary_operators"] = list(PYSR_TARGET_CORE_BINARY)
+            out["unary_operators"] = list(PYSR_TARGET_CORE_UNARY)
+            shared_native_library = [*PYSR_TARGET_CORE_BINARY, *PYSR_TARGET_CORE_UNARY]
+            shared_native_exact = False
+            shared_native_note = (
+                "recursive tree grammar; identity is a variable leaf and 1/x^2 is composed from inv/square"
+            )
+        elif is_operon:
+            if resolved_lib_name != "core10":
+                raise ValueError("Operon shared-library matching currently supports only target_core/core10")
+            out["allowed_symbols"] = ",".join(OPERON_TARGET_CORE_SYMBOLS)
+            shared_native_library = list(OPERON_TARGET_CORE_SYMBOLS)
+            shared_native_exact = False
+            shared_native_note = (
+                "recursive tree grammar; reciprocal and inverse-square are composed using division and square"
+            )
+        elif is_pse:
+            if resolved_lib_name != "core10":
+                raise ValueError("PSE shared-library matching currently supports only target_core/core10")
+            out["operators"] = list(PSE_TARGET_CORE_NATIVE)
+            shared_native_library = list(PSE_TARGET_CORE_NATIVE)
+            shared_native_exact = False
+            shared_native_note = (
+                "official PSRN grammar has arithmetic/identity plus sin/cos/exp/log/tanh; "
+                "square and reciprocal are composed, with no dedicated sqrt token in the configured public grammar"
+            )
+        elif is_udsr:
+            if resolved_lib_name != "core10":
+                raise ValueError("uDSR shared-library matching currently supports only target_core/core10")
+            # Keep the LINEAR/poly token because removing it would turn the
+            # baseline into DSO rather than uDSR.  Other tokens are restricted
+            # to the elementary arithmetic/trig/exp/log set used by the public
+            # uDSR configuration.
+            out["function_set"] = list(UDSR_TARGET_CORE_NATIVE)
+            shared_native_library = list(UDSR_TARGET_CORE_NATIVE)
+            shared_native_exact = False
+            shared_native_note = (
+                "method-native uDSR exception: LINEAR/poly is retained; the public grammar has no direct tanh/sqrt atoms"
+            )
+        elif is_rils_rols:
+            if resolved_lib_name != "core10":
+                raise ValueError("RILS-ROLS shared-library matching currently supports only target_core/core10")
+            # The public sklearn estimator does not expose its internal
+            # operator set as a constructor argument.  Record this explicitly
+            # rather than pretending it is vocabulary matched.
+            shared_native_library = ["method-native fixed grammar"]
+            shared_native_exact = False
+            shared_native_note = (
+                "public RILS-ROLS API does not expose an operator-library control; method-native grammar retained"
+            )
 
     if sh.get("lr") is not None and (is_rulekan or is_multkan or model_name == "vanilla_kan"):
         out["lr"] = float(sh["lr"])
@@ -236,10 +368,17 @@ def resolve_shared_benchmark_config(
         "shared_additive_units": int(additive_units) if is_multkan else None,
         "shared_mult_units": int(mult_units) if is_multkan else None,
         "shared_task_max_factors": int(spec.max_factors),
+        "shared_max_product_order": int(resolved_product_order),
         "shared_grid": int(out["grid"]) if out.get("grid") is not None else None,
         "shared_symbolic_trial_steps": int(out["symbolic_trial_steps"]) if out.get("symbolic_trial_steps") is not None else None,
         "shared_symbolic_library": resolved_lib_name,
-        "shared_symbolic_library_size": len(out.get("symbolic_library", [])) if out.get("symbolic_library") is not None else None,
+        "shared_symbolic_library_size": len(TARGET_CORE_SYMBOLIC_LIBRARY) if resolved_lib_name == "core10" else (
+            len(out.get("symbolic_library", [])) if out.get("symbolic_library") is not None else None
+        ),
+        "shared_symbolic_native_library": shared_native_library,
+        "shared_symbolic_native_library_size": len(shared_native_library) if shared_native_library is not None else None,
+        "shared_symbolic_native_exact_match": shared_native_exact,
+        "shared_symbolic_native_note": shared_native_note,
         "shared_symbolic_max_rules": int(out["symbolic_max_rules"]) if is_rulekan and out.get("symbolic_max_rules") is not None else None,
         "shared_symbolic_hybrid_hard_screening": bool(out.get("symbolic_hybrid_hard_screening", False)) if is_rulekan else None,
         "shared_symbolic_residual_structure_topk": int(out.get("symbolic_residual_structure_topk", 0)) if is_rulekan else None,
@@ -3003,6 +3142,370 @@ def _external_feature_names(data: BenchmarkData, d: int) -> list[str]:
     return [str(name).replace(" ", "_").replace("-", "_") for name in names]
 
 
+
+
+def _predict_sympy_formula(formula: str, names: Sequence[str], x: np.ndarray) -> np.ndarray:
+    """Evaluate a returned symbolic expression on benchmark arrays.
+
+    External engines use slightly different textual conventions.  This parser
+    intentionally handles only ordinary analytic expressions; a backend whose
+    exported expression cannot be parsed should expose its own ``predict`` API.
+    """
+    import sympy as _sp
+    text = str(formula).strip().replace("^", "**")
+    xs = [_sp.Symbol(str(n), real=True) for n in names]
+    local = {str(n): xs[i] for i, n in enumerate(names)}
+    local.update({
+        "abs": _sp.Abs, "Abs": _sp.Abs, "sqrt": _sp.sqrt, "exp": _sp.exp,
+        "log": _sp.log, "sin": _sp.sin, "cos": _sp.cos, "tan": _sp.tan,
+        "tanh": _sp.tanh, "atan": _sp.atan, "arctan": _sp.atan,
+    })
+    expr = _sp.sympify(text, locals=local)
+    fn = _sp.lambdify(xs, expr, modules="numpy")
+    cols = [np.asarray(x[:, i], dtype=np.float64) for i in range(x.shape[1])]
+    pred = np.asarray(fn(*cols), dtype=np.float64)
+    if pred.ndim == 0:
+        pred = np.full(x.shape[0], float(pred), dtype=np.float64)
+    pred = np.broadcast_to(pred.reshape(-1), (x.shape[0],)).copy()
+    if not np.isfinite(pred).all():
+        raise ValueError("symbolic formula produced non-finite predictions")
+    return pred
+
+
+def train_symbolic_kan(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Run the authors' official Symbolic-KAN implementation.
+
+    The upstream training/selection/hardening/LBFGS routine is executed
+    directly from the vendored ``sfaroughi3/Pub_Symbolic_KANs`` snapshot.
+    The benchmark adapter only supplies the already-created train/validation
+    arrays and serializes the trained discrete model for common formula scoring.
+    """
+    if spec.task_type != "regression":
+        raise ValueError("Symbolic-KAN baseline currently supports regression tasks only")
+
+    device = str(cfg.get("device", "cpu"))
+    torch.manual_seed(int(seed))
+    np.random.seed(int(seed))
+    t0 = time.perf_counter()
+    api, model, fit_diag = fit_official_symbolic_kan(
+        data.train_x, data.train_y, data.val_x, data.val_y,
+        seed=int(seed),
+        device=device,
+        repo_root=cfg.get("official_repo_root"),
+        source_subdir=str(cfg.get("official_source_subdir", "Exp_reaction_diffusion")),
+        config=cfg,
+    )
+    seconds = time.perf_counter() - t0
+
+    x_test = np.asarray(data.test_x.detach().cpu().numpy(), dtype=np.float64)
+    names = _external_feature_names(data, x_test.shape[1])
+    formula = official_formula(model, names)
+
+    # Score the authors' hardened/discrete symbolic network with their own
+    # evaluator.  This is the closest possible measurement of the official
+    # implementation: its numerical primitive code includes stability guards
+    # (for example clipped exponentials) that the upstream human-readable
+    # equation exporter intentionally omits.
+    hard_pred = official_hardened_predict(api, model, data.test_x)
+    metrics = evaluate_predictions(hard_pred, data.test_y.cpu(), data)
+    metrics["symbolic_seconds"] = float(seconds)
+
+    # Also evaluate the serialized human-readable formula when numerically
+    # possible.  This is diagnostic/provenance, not the primary score, because
+    # it can differ from the upstream evaluator only at those stability guards.
+    export_finite = False
+    export_error = None
+    try:
+        pred_np = _predict_sympy_formula(formula, names, x_test)
+        pred = torch.as_tensor(pred_np, dtype=data.test_y.dtype).reshape(-1, 1)
+        export_metrics = evaluate_predictions(pred, data.test_y.cpu(), data)
+        metrics["exported_formula_test_nrmse"] = float(export_metrics.get("test_nrmse", float("nan")))
+        if pred.numel() == hard_pred.numel():
+            delta = pred.reshape(-1).double() - hard_pred.reshape(-1).double()
+            metrics["symbolic_export_vs_official_rmse"] = float(torch.sqrt(torch.mean(delta.square())).cpu())
+        export_finite = True
+    except Exception as exc:
+        metrics["exported_formula_test_nrmse"] = float("nan")
+        metrics["symbolic_export_vs_official_rmse"] = float("nan")
+        export_error = f"{type(exc).__name__}: {exc}"
+
+    extras: Dict[str, Any] = {
+        "formula": formula,
+        "formula_input_space": "standardized",
+        "symbolic_backend": "symbolic_kan_official_github",
+        "symbolic_kan_reference": "Faroughi et al. 2026, JCP 566:115223",
+        "symbolic_kan_official_repo": fit_diag.get("symbolic_kan_upstream_url"),
+        "symbolic_kan_official_commit": fit_diag.get("symbolic_kan_upstream_commit"),
+        "symbolic_kan_exact_official_code": True,
+        "symbolic_kan_training_routine": "train_regression_onehot",
+        "symbolic_kan_benchmark_adapter": "dataset injection + faithful formula serialization",
+        "symbolic_prediction_source": "official_hardened_evaluator",
+        "symbolic_export_finite": bool(export_finite),
+        "symbolic_export_error": export_error,
+        "parameters": _param_count(model),
+        **fit_diag,
+    }
+    return ModelRun("symbolic_kan", metrics, extras, numeric_model=model, symbolic_model=model)
+
+def train_pse(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Official PSE/PSRN symbolic-regression baseline (Ruan et al., 2026)."""
+    if spec.task_type != "regression":
+        raise ValueError("PSE baseline currently supports regression tasks only")
+    try:
+        from psrn import PSRN_Regressor
+    except ImportError as exc:
+        raise ImportError(
+            "PSE baseline requires the official `psrn` package; install "
+            "`python -m pip install psrn`."
+        ) from exc
+
+    x_train, y_train, x_test = _external_sr_arrays(data)
+    names = _external_feature_names(data, x_train.shape[1])
+    # PSE's official operator names. The default is deliberately elementary;
+    # users can override it per profile when matching a different grammar.
+    operators = list(cfg.get("operators", [
+        "Add", "Mul", "Sub", "Div", "Identity", "Sin", "Cos", "Exp", "Log", "Tanh",
+    ]))
+    device_cfg = str(cfg.get("device", "cpu"))
+    use_cpu = bool(cfg.get("use_cpu", not device_cfg.startswith("cuda")))
+    if use_cpu:
+        device = torch.device("cpu")
+    else:
+        device = torch.device(device_cfg if torch.cuda.is_available() else "cpu")
+    n_inputs = int(cfg.get("n_inputs", max(x_train.shape[1] + int(cfg.get("extra_input_slots", 2)), x_train.shape[1])))
+    regressor = PSRN_Regressor(
+        variables=names,
+        use_const=bool(cfg.get("use_constant", True)),
+        n_symbol_layers=int(cfg.get("n_symbol_layers", 3)),
+        device=device,
+        token_generator_config={
+            "base": {"has_const": bool(cfg.get("use_constant", True)), "tokens": operators}
+        },
+        stage_config={
+            "default": {
+                "operators": operators,
+                "time_limit": int(cfg.get("time_limit", cfg.get("timeout_seconds", 600))),
+                "n_psrn_inputs": n_inputs,
+                "n_sample_variables": int(cfg.get("n_sample_variables", min(3, x_train.shape[1]))),
+            },
+            "stages": [{}],
+        },
+    )
+    t0 = time.perf_counter()
+    regressor.fit(
+        x_train,
+        y_train.reshape(-1, 1),
+        n_down_sample=int(cfg.get("n_down_sample", min(256, len(x_train)))),
+        use_threshold=bool(cfg.get("use_threshold", False)),
+        threshold=float(cfg.get("threshold", 1e-12)),
+        probe=None,
+        prun_const=bool(cfg.get("prun_const", True)),
+        prun_ndigit=int(cfg.get("prun_ndigit", 6)),
+        top_k=int(cfg.get("top_k", 10)),
+    )
+    seconds = time.perf_counter() - t0
+    table = regressor.display_expr_table(sort_by=str(cfg.get("sort_by", "mse")))
+    if table is None or len(table) == 0:
+        raise RuntimeError("PSE returned no symbolic expressions")
+    best = table[0]
+    formula = str(best[0] if isinstance(best, (tuple, list)) else best)
+    pred_np = _predict_sympy_formula(formula, names, x_test)
+    if not np.isfinite(pred_np).all():
+        raise ValueError("PSE returned non-finite predictions")
+    pred = torch.as_tensor(pred_np, dtype=data.test_y.dtype).reshape(-1, 1)
+    metrics = evaluate_predictions(pred, data.test_y.cpu(), data)
+    metrics["symbolic_seconds"] = float(seconds)
+    extras: Dict[str, Any] = {
+        "formula": formula,
+        "formula_input_space": "standardized",
+        "symbolic_backend": "pse_psrn_official",
+        "pse_operators": operators,
+        "pse_n_symbol_layers": int(cfg.get("n_symbol_layers", 3)),
+        "pse_n_inputs": n_inputs,
+        "parameters": 0,
+    }
+    if isinstance(best, (tuple, list)):
+        if len(best) > 1: extras["pse_reward"] = float(best[1])
+        if len(best) > 2: extras["pse_loss"] = float(best[2])
+        if len(best) > 3: extras["symbolic_model_length"] = float(best[3])
+    return ModelRun("pse", metrics, extras)
+
+
+def train_rils_rols(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Official RILS-ROLS symbolic-regression baseline."""
+    if spec.task_type != "regression":
+        raise ValueError("RILS-ROLS baseline currently supports regression tasks only")
+    try:
+        from rils_rols.rils_rols import RILSROLSRegressor
+    except ImportError as exc:
+        raise ImportError(
+            "RILS-ROLS baseline requires `rils-rols`; on Linux install pybind11 first, then `pip install rils-rols`."
+        ) from exc
+    x_train, y_train, x_test = _external_sr_arrays(data)
+    requested: Dict[str, Any] = {
+        "max_fit_calls": int(cfg.get("max_fit_calls", 100000)),
+        "max_seconds": int(cfg.get("max_seconds", cfg.get("timeout_seconds", 600))),
+        "complexity_penalty": float(cfg.get("complexity_penalty", 1e-3)),
+        "error_tolerance": float(cfg.get("error_tolerance", 1e-12)),
+        "max_complexity": int(cfg.get("max_complexity", 40)),
+        "sample_size": float(cfg.get("sample_size", 1.0)),
+        "verbose": bool(cfg.get("verbose", False)),
+        "random_state": int(seed),
+    }
+    # The public package has changed constructor options across releases. Pass
+    # only parameters exposed by the installed version (unless it accepts
+    # arbitrary **kwargs) so one adapter works across those releases.
+    sig = inspect.signature(RILSROLSRegressor)
+    accepts_kwargs = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+    kwargs = requested if accepts_kwargs else {k: v for k, v in requested.items() if k in sig.parameters}
+    model = RILSROLSRegressor(**kwargs)
+    t0 = time.perf_counter()
+    model.fit(x_train, y_train)
+    seconds = time.perf_counter() - t0
+    pred_np = np.asarray(model.predict(x_test), dtype=np.float64).reshape(-1)
+    if not np.isfinite(pred_np).all():
+        raise ValueError("RILS-ROLS returned non-finite predictions")
+    pred = torch.as_tensor(pred_np, dtype=data.test_y.dtype).reshape(-1, 1)
+    metrics = evaluate_predictions(pred, data.test_y.cpu(), data)
+    metrics["symbolic_seconds"] = float(seconds)
+    if hasattr(model, "model_string"):
+        value = getattr(model, "model_string")
+        formula = str(value() if callable(value) else value)
+    elif hasattr(model, "model_simp"):
+        formula = str(getattr(model, "model_simp"))
+    else:
+        formula = str(getattr(model, "model", ""))
+    extras: Dict[str, Any] = {
+        "formula": formula,
+        "formula_input_space": "standardized",
+        "symbolic_backend": "rils_rols_official",
+        "parameters": 0,
+        "rils_rols_max_fit_calls": int(requested["max_fit_calls"]),
+        "rils_rols_max_seconds": int(requested["max_seconds"]),
+        "rils_rols_complexity_penalty": float(requested["complexity_penalty"]),
+    }
+    return ModelRun("rils_rols", metrics, extras)
+
+
+def _normalize_dso_formula_variables(formula: str, names: Sequence[str]) -> str:
+    """Map DSO's one-based x1,x2,... names to this benchmark's feature names."""
+    text = str(formula).strip()
+    # DSO examples and pretty-printer use x1, x2, ... . If an x0 token is
+    # already present, treat the expression as zero-based and leave it alone.
+    if re.search(r"\bx0\b", text):
+        return text
+    for i in reversed(range(len(names))):
+        text = re.sub(rf"\bx{i + 1}\b", f"__dso_var_{i}__", text)
+    for i, name in enumerate(names):
+        text = text.replace(f"__dso_var_{i}__", str(name))
+    return text
+
+
+def train_udsr(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Official unified Deep Symbolic Regression (uDSR) baseline.
+
+    Uses the DSO sklearn interface with the NeurIPS-2022 LINEAR/``poly`` token
+    and GP-meld enabled, which are the defining additions of uDSR in the
+    authors' public implementation.  The PyTorch refactor is preferred so this
+    benchmark does not acquire a TensorFlow dependency.
+    """
+    if spec.task_type != "regression":
+        raise ValueError("uDSR baseline currently supports regression tasks only")
+    try:
+        import dso
+        from dso import DeepSymbolicRegressor
+    except ImportError as exc:
+        raise ImportError(
+            "uDSR requires the official DSO package; install the PyTorch refactor "
+            "from https://github.com/dso-org/deep-symbolic-optimization-pytorch "
+            "(`pip install 'git+https://github.com/dso-org/deep-symbolic-optimization-pytorch.git#subdirectory=dso'`)."
+        ) from exc
+
+    x_train, y_train, x_test = _external_sr_arrays(data)
+    names = _external_feature_names(data, x_train.shape[1])
+    function_set = [str(v) for v in cfg.get(
+        "function_set", ["add", "sub", "mul", "div", "sin", "cos", "exp", "log", "poly"]
+    )]
+    # Calling the method uDSR is only accurate when the LINEAR/poly token and
+    # neural-guided GP meld from the 2022 release are actually enabled.
+    if "poly" not in function_set:
+        function_set.append("poly")
+
+    dso_cfg: Dict[str, Any] = {
+        "experiment": {"seed": int(seed)},
+        "task": {
+            "task_type": "regression",
+            "function_set": function_set,
+            "metric": str(cfg.get("metric", "inv_nrmse")),
+            "metric_params": list(cfg.get("metric_params", [1.0])),
+            "threshold": float(cfg.get("threshold", 1e-12)),
+            "protected": bool(cfg.get("protected", False)),
+            "poly_optimizer_params": {
+                "degree": int(cfg.get("poly_degree", 3)),
+                "coef_tol": float(cfg.get("poly_coef_tol", 1e-6)),
+                "regressor": str(cfg.get("poly_regressor", "dso_least_squares")),
+                "regressor_params": dict(cfg.get("poly_regressor_params", {})),
+            },
+        },
+        "gp_meld": {
+            "run_gp_meld": True,
+            "population_size": int(cfg.get("gp_population_size", 100)),
+            "generations": int(cfg.get("gp_generations", 20)),
+            "parallel_eval": bool(cfg.get("gp_parallel_eval", False)),
+        },
+        "training": {
+            "n_samples": int(cfg.get("n_samples", 20000)),
+            "batch_size": int(cfg.get("batch_size", 500)),
+            "epsilon": float(cfg.get("epsilon", 0.02)),
+            "n_cores_batch": int(cfg.get("n_cores_batch", 1)),
+        },
+        "logging": {
+            "save_summary": False,
+            "save_all_iterations": False,
+        },
+    }
+
+    t0 = time.perf_counter()
+    with tempfile.TemporaryDirectory(prefix="rulekan_udsr_") as td:
+        dso_cfg["experiment"]["logdir"] = td
+        config_path = f"{td}/udsr.json"
+        with open(config_path, "w", encoding="utf-8") as fh:
+            json.dump(dso_cfg, fh)
+        # Public API: DeepSymbolicRegressor(<config JSON path>).  A keyword
+        # fallback keeps the adapter compatible with small API refactors.
+        try:
+            model = DeepSymbolicRegressor(config_path)
+        except TypeError:
+            model = DeepSymbolicRegressor(config=config_path)
+        model.fit(x_train, y_train)
+        pred_np = np.asarray(model.predict(x_test), dtype=np.float64).reshape(-1)
+        program = getattr(model, "program_", None)
+        if program is None:
+            raise RuntimeError("uDSR returned no best symbolic program")
+        pretty = getattr(program, "pretty", None)
+        formula = str(pretty() if callable(pretty) else program)
+    seconds = time.perf_counter() - t0
+
+    if not np.isfinite(pred_np).all():
+        raise ValueError("uDSR returned non-finite predictions")
+    formula = _normalize_dso_formula_variables(formula, names)
+    pred = torch.as_tensor(pred_np, dtype=data.test_y.dtype).reshape(-1, 1)
+    metrics = evaluate_predictions(pred, data.test_y.cpu(), data)
+    metrics["symbolic_seconds"] = float(seconds)
+    extras: Dict[str, Any] = {
+        "formula": formula,
+        "formula_input_space": "standardized",
+        "symbolic_backend": "udsr_dso_official",
+        "udsr_repo": "https://github.com/dso-org/deep-symbolic-optimization-pytorch",
+        "udsr_function_set": function_set,
+        "udsr_poly_degree": int(cfg.get("poly_degree", 3)),
+        "udsr_gp_meld": True,
+        "udsr_n_samples": int(cfg.get("n_samples", 20000)),
+        "dso_version": str(getattr(dso, "__version__", "unknown")),
+        "parameters": 0,
+    }
+    return ModelRun("udsr", metrics, extras, symbolic_model=model)
+
 def _safe_srkan_output_transforms(
     y_train: np.ndarray, requested: Sequence[str]
 ) -> tuple[list[str], list[str]]:
@@ -3645,6 +4148,10 @@ TRAINERS = {
     "fast_multkan_deep_gsr": train_fast_multkan_deep_gsr,
     "multkan_deep_gmp": train_multkan_deep_gmp,
     "srkan": train_srkan,
+    "symbolic_kan": train_symbolic_kan,
+    "pse": train_pse,
+    "rils_rols": train_rils_rols,
+    "udsr": train_udsr,
     "pysr": train_pysr,
     "operon": train_operon,
     "anfis": train_anfis,
@@ -3656,7 +4163,7 @@ TRAINERS = {
 def model_supports_task(model_name: str, spec: TaskSpec) -> bool:
     # The five paper pipelines are symbolic-regression methods.  RuleKAN, KAN
     # and MLP additionally serve as predictive baselines on classification data.
-    if model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES or model_name in {"pysr", "operon", "srkan", "power_rulekan", "power_rulekan_comp", "anfis"}:
+    if model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES or model_name in {"pysr", "operon", "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "power_rulekan", "power_rulekan_comp", "anfis"}:
         return spec.task_type == "regression"
     return model_name in TRAINERS
 

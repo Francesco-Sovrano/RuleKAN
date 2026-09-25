@@ -47,7 +47,7 @@ Its shared settings resolve the common benchmark controls to:
 | `capacity.policy` | `fixed` |
 | `capacity.width` | `12` |
 | `capacity.mult_units` | `4` |
-| `max_product_order` | `task` |
+| `max_product_order` | `3` |
 | `grid` | `12` |
 | `symbolic_library` | `target_core` |
 | `symbolic_hybrid_hard_screening` | `true` |
@@ -55,7 +55,7 @@ Its shared settings resolve the common benchmark controls to:
 | `symbolic_joint_scale_refit` | `true` |
 | `symbolic_rule_budget_at_least_width` | `true` |
 
-For RuleKAN, shared width sets `n_rules=12`; task-specific maximum product order sets `max_factors_override` from the selected `TaskSpec`; `target_core` resolves to the 14-operator library.
+For RuleKAN, shared width sets `n_rules=12`; the fixed maximum product order sets `max_factors_override=3` for every task; `target_core` resolves to the 14-operator library.
 
 ## Ablation inheritance
 

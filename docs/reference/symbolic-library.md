@@ -102,9 +102,24 @@ inv1p_sq     1 / (1 + x^2)
 
 They avoid the domain restrictions of raw `log`, `sqrt` and reciprocal when the target itself is defined by these protected forms.
 
+## Cross-method vocabulary matching
+
+The controlled `research`/`research_modern` profiles use `core10` as the conceptual target vocabulary. RuleKAN-family methods, AutoSym/GSR/GMP/MultKAN controls, and SR-KAN receive an exact ten-atom match (with SR-KAN native aliases such as `linear`, `square`, `inv_x`, and `inv_x2`).
+
+External symbolic-regression systems are matched as closely as their public APIs permit:
+
+- **Symbolic-KAN:** `x, x2, inv, sqrtx, log, exp, sin, cos, tanh`. The official implementation has no one-step inverse-square atom; with two symbolic blocks, `1/x^2` can be composed from `x2` and `inv`. The previous duplicate `id`/`x` and `x3` shortcut are not used.
+- **PySR:** binary `+,-,*,/` plus `square,exp,sin,cos,tanh,sqrt,log,inv`. Extra unary shortcuts `cube`, `atan`, and `abs` are disabled; identity is a variable leaf and inverse-square is compositional.
+- **Operon:** arithmetic, constants/variables, `square,exp,sin,cos,tanh,sqrt,log`. Extra `atan` and `abs` shortcuts are disabled; reciprocal and inverse-square are compositional through division and square.
+- **PSE/PSRN:** its documented arithmetic/identity plus `sin,cos,exp,log,tanh` grammar is retained. Square and reciprocal can be composed, but the configured public grammar has no dedicated square-root token.
+- **uDSR:** the public uDSR function set is retained, including its defining `poly`/LINEAR token; its public grammar does not provide a literal one-to-one `core10` mapping.
+- **RILS-ROLS:** the public estimator does not expose an operator-library constructor option, so its method-native grammar is retained.
+
+Each run records `shared_symbolic_native_library`, `shared_symbolic_native_exact_match`, and `shared_symbolic_native_note`, so unavoidable grammar mismatches are explicit in the result metadata rather than silently treated as exact matches.
+
 ## Constants
 
-RuleKAN's expression already contains a global bias `b` and one amplitude `a_r` per rule. Explicit constant factors are therefore usually redundant in the RuleKAN benchmark vocabulary. External symbolic-regression baselines keep their own constant mechanisms according to their native configuration.
+RuleKAN's expression already contains a global bias `b` and one amplitude `a_r` per rule. Explicit constant factors are therefore usually redundant in the RuleKAN benchmark vocabulary. External symbolic-regression baselines retain their native constant mechanisms where those are inseparable from the public method API.
 
 ## Affine reparameterization
 

@@ -180,7 +180,7 @@ profiles:
         policy: fixed
         width: 12
         mult_units: 4
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -357,7 +357,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_hybrid_hard_screening: true
@@ -540,7 +540,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -1084,7 +1084,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_hybrid_hard_screening: true
@@ -1423,7 +1423,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_hybrid_hard_screening: true
@@ -1473,7 +1473,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -1529,7 +1529,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -1620,7 +1620,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -1809,7 +1809,7 @@ profiles:
         width: 8
         mult_fraction: 0.375
         min_mult_units: 2
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -2080,7 +2080,7 @@ profiles:
         width: 8
         mult_fraction: 0.375
         min_mult_units: 2
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -2192,7 +2192,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -2285,7 +2285,7 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
@@ -2379,13 +2379,101 @@ profiles:
     shared_settings:
       enabled: true
       capacity: *id001
-      max_product_order: task
+      max_product_order: 3
       grid: 12
       symbolic_library: target_core
       symbolic_rule_budget_at_least_width: true
   main:
     extends: research
     description: Alias for the compact primary research benchmark.
+  research_modern:
+    extends: research
+    description: Research benchmark with additional contemporary symbolic-regression baselines.
+    models:
+    - rulekan
+    - rulekan_comp
+    - rulekan_adaptive
+    - rulekan_fast
+    - rulekan_omp_full
+    - sisp
+    - sisp_comp
+    - power_rulekan
+    - power_rulekan_comp
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - srkan
+    - symbolic_kan
+    - pse
+    - rils_rols
+    - pysr
+    - operon
+    - anfis
+    - multkan_deep_gsr
+    model_config:
+      symbolic_kan:
+        # Authors' official Pub_Symbolic_KANs implementation, executed through
+        # Exp_reaction_diffusion/symKanTraining.py::train_regression_onehot.
+        # Width 12 matches the controlled neural width used by the KAN baselines;
+        # all selection/hardening/LBFGS mechanics are upstream code.
+        hidden_units: 12
+        edges_per_unit: 3
+        num_blocks: 2
+        # Closest native match to the shared core10 vocabulary. The official
+        # implementation has no one-step 1/x^2 primitive; with two symbolic
+        # blocks it can compose inverse-square from x2 and inv.
+        lib: [x, x2, inv, sqrtx, log, exp, sin, cos, tanh]
+        epochs: 1200
+        adam_epochs: 1000
+        lr: 0.005
+        weight_decay: 0.0
+        use_lbfgs: true
+        lbfgs_max_iter: 15
+        lbfgs_steps: 40
+        sel_w_start: 0.0
+        sel_w_end: 0.5
+        entropy_weight: 0.9
+        nms_weight: 0.9
+        sel_start_frac: 0.5
+        tau_start: 4.0
+        tau_end: 0.2
+        drop_tau_to: 0.1
+        middle_lbfgs_harden: false
+        train_proj_b: true
+        train_prim_beta: false
+        train_prim_bias: true
+        train_readout_bias: false
+        use_unit_gates: false
+        freeze_edges_for_lbfgs: true
+        diagnostic_plots: false
+      pse:
+        operators: [Add, Mul, Sub, Div, Identity, Sin, Cos, Exp, Log, Tanh]
+        n_symbol_layers: 3
+        n_down_sample: 256
+        extra_input_slots: 2
+        use_constant: true
+        top_k: 10
+        time_limit: 1800
+      rils_rols:
+        max_fit_calls: 100000
+        max_seconds: 1800
+        complexity_penalty: 0.001
+        error_tolerance: 1.0e-12
+        max_complexity: 40
+        sample_size: 1.0
+        verbose: false
+      udsr:
+        function_set: [add, sub, mul, div, sin, cos, exp, log, poly]
+        poly_degree: 3
+        n_samples: 20000
+        batch_size: 500
+        epsilon: 0.02
+        gp_population_size: 100
+        gp_generations: 20
+        gp_parallel_eval: false
+        n_cores_batch: 1
   research_exhaustive:
     extends: research
     description: Legacy exhaustive research matrix retained for appendix/diagnostic use only.

@@ -11,3 +11,12 @@ pyoperon==0.6.1
 # Do NOT replace this with `srkan` from PyPI; that name currently refers to a
 # different spiking-network project.
 git+https://github.com/marcobuhler/SR-KAN.git
+
+# Contemporary symbolic-regression baselines used by the research_modern profile.
+# PSE/PSRN currently supports Python 3.9--3.12.
+psrn
+# RILS-ROLS builds its pybind11 extension from source on Linux.
+pybind11
+rils-rols
+# uDSR / DSO, official PyTorch refactor.
+git+https://github.com/dso-org/deep-symbolic-optimization-pytorch.git#subdirectory=dso

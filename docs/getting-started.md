@@ -34,6 +34,14 @@ python -m pip install -r benchmarks/requirements-srkan.txt
 
 The package named `srkan` on PyPI is not the dependency used by the benchmark. `benchmarks/requirements-srkan.txt` points to the implementation expected by the adapter.
 
+To install only the additional PSE, RILS-ROLS, and uDSR dependencies used by the `research_modern` profile:
+
+```bash
+python -m pip install -r benchmarks/requirements-modern-sr.txt
+```
+
+PSE/PSRN currently requires Python 3.9--3.12.
+
 ## Verify the checkout
 
 Run the test suite from the repository root:

@@ -447,7 +447,10 @@ def test_shared_capacity_resolver_uses_fixed_total_width_consistently():
     assert rk2["n_rules"] == 12
     assert gsr2["width_additive"] == 8 and gsr2["mult_units"] == 4
     assert gsr2["width_additive"] + gsr2["mult_units"] == 12
-    assert gsr2["mult_arity"] == spec2.max_factors
+    assert rk2["max_factors_override"] == 3
+    assert gsr2["mult_arity"] == 3
+    assert meta2["shared_max_product_order"] == 3
+    assert meta2["shared_task_max_factors"] == spec2.max_factors
     assert meta3["shared_capacity_width"] == 12
     assert deep3["deep_width_1"] == 12
     assert deep3["deep_width_2"] + deep3["deep_mult_units"] == 12
@@ -1429,3 +1432,110 @@ def test_complementary_two_rule_rescue_recovers_same_variable_family_without_exp
     )
     assert sisp_meta["selected"] is True
     assert (sisp_meta["operator_a"], sisp_meta["operator_b"]) == ("sin", "tanh")
+
+
+
+def test_research_modern_profile_adds_contemporary_symbolic_baselines():
+    import yaml
+    from benchmarks.config_utils import resolve_profile
+    from benchmarks.models import TRAINERS
+    root = Path(__file__).resolve().parents[1]
+    cfg = yaml.safe_load((root / "benchmarks" / "configs" / "default.yaml").read_text())
+    modern = resolve_profile(cfg, "research_modern")
+    assert {"symbolic_kan", "pse", "rils_rols"}.issubset(modern["models"])
+    assert {"symbolic_kan", "pse", "rils_rols", "udsr"}.issubset(TRAINERS)
+    assert modern["model_config"]["pse"]["n_symbol_layers"] == 3
+    assert modern["model_config"]["rils_rols"]["max_fit_calls"] == 100000
+
+
+def test_modern_sr_requirements_are_declared():
+    root = Path(__file__).resolve().parents[1]
+    req = (root / "benchmarks" / "requirements-modern-sr.txt").read_text()
+    assert "psrn" in req
+    assert "rils-rols" in req
+    assert "deep-symbolic-optimization-pytorch" in req
+    assert "pybind11" in req
+
+
+def test_research_modern_vocabulary_matching_across_symbolic_baselines():
+    import yaml
+    from benchmarks.config_utils import resolve_profile
+    from benchmarks.models import (
+        OPERON_TARGET_CORE_SYMBOLS,
+        PSE_TARGET_CORE_NATIVE,
+        PYSR_TARGET_CORE_BINARY,
+        PYSR_TARGET_CORE_UNARY,
+        SYMBOLIC_KAN_TARGET_CORE_NATIVE,
+        TARGET_CORE_SYMBOLIC_LIBRARY,
+        UDSR_TARGET_CORE_NATIVE,
+        resolve_shared_benchmark_config,
+    )
+
+    cfg = yaml.safe_load(Path("benchmarks/configs/default.yaml").read_text())
+    profile = resolve_profile(cfg, "research_modern")
+    shared = profile["shared_settings"]
+    spec = TASKS["same_var_exp_sin"]
+
+    # KAN-derived methods and SR-KAN can use the exact conceptual core10 bank.
+    gsr, gsr_meta = resolve_shared_benchmark_config(
+        "gsr", spec, profile.get("model_config", {}).get("gsr", {}), shared
+    )
+    srkan, srkan_meta = resolve_shared_benchmark_config(
+        "srkan", spec, profile.get("model_config", {}).get("srkan", {}), shared
+    )
+    assert tuple(gsr["symbolic_library"]) == tuple(TARGET_CORE_SYMBOLIC_LIBRARY)
+    assert gsr_meta["shared_symbolic_native_exact_match"] is True
+    assert srkan["functions"] == ["target_core"]
+    assert srkan_meta["shared_symbolic_native_exact_match"] is True
+
+    # Official Symbolic-KAN uses the closest native atoms.  Do not duplicate
+    # identity (id + x), and do not give it the x^3 shortcut used previously.
+    skan, skan_meta = resolve_shared_benchmark_config(
+        "symbolic_kan", spec, profile["model_config"]["symbolic_kan"], shared
+    )
+    assert tuple(skan["lib"]) == tuple(SYMBOLIC_KAN_TARGET_CORE_NATIVE)
+    assert "id" not in skan["lib"] and "x3" not in skan["lib"]
+    assert skan_meta["shared_symbolic_library"] == "core10"
+    assert skan_meta["shared_symbolic_library_size"] == 10
+    assert skan_meta["shared_symbolic_native_exact_match"] is False
+    assert "1/x^2" in skan_meta["shared_symbolic_native_note"]
+
+    # General recursive SR systems are restricted to core-compatible direct
+    # unary shortcuts; ordinary tree arithmetic remains available to compose
+    # products, reciprocals, and inverse squares.
+    pysr, pysr_meta = resolve_shared_benchmark_config(
+        "pysr", spec, profile.get("model_config", {}).get("pysr", {}), shared
+    )
+    assert tuple(pysr["binary_operators"]) == tuple(PYSR_TARGET_CORE_BINARY)
+    assert tuple(pysr["unary_operators"]) == tuple(PYSR_TARGET_CORE_UNARY)
+    assert {"cube", "atan", "abs"}.isdisjoint(pysr["unary_operators"])
+    assert pysr_meta["shared_symbolic_native_exact_match"] is False
+
+    operon, operon_meta = resolve_shared_benchmark_config(
+        "operon", spec, profile.get("model_config", {}).get("operon", {}), shared
+    )
+    assert tuple(operon["allowed_symbols"].split(",")) == tuple(OPERON_TARGET_CORE_SYMBOLS)
+    assert {"atan", "abs"}.isdisjoint(operon["allowed_symbols"].split(","))
+    assert operon_meta["shared_symbolic_native_exact_match"] is False
+
+    # These baselines have method-native grammar constraints that prevent a
+    # literal one-to-one core10 bank; the resolver records the exception rather
+    # than silently claiming exact vocabulary matching.
+    pse, pse_meta = resolve_shared_benchmark_config(
+        "pse", spec, profile["model_config"]["pse"], shared
+    )
+    assert tuple(pse["operators"]) == tuple(PSE_TARGET_CORE_NATIVE)
+    assert pse_meta["shared_symbolic_native_exact_match"] is False
+
+    udsr, udsr_meta = resolve_shared_benchmark_config(
+        "udsr", spec, profile["model_config"]["udsr"], shared
+    )
+    assert tuple(udsr["function_set"]) == tuple(UDSR_TARGET_CORE_NATIVE)
+    assert "poly" in udsr["function_set"]
+    assert udsr_meta["shared_symbolic_native_exact_match"] is False
+
+    _, rils_meta = resolve_shared_benchmark_config(
+        "rils_rols", spec, profile["model_config"]["rils_rols"], shared
+    )
+    assert rils_meta["shared_symbolic_native_exact_match"] is False
+    assert "does not expose" in rils_meta["shared_symbolic_native_note"]
