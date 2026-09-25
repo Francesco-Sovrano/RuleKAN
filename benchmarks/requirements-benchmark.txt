@@ -1,22 +1,32 @@
-ucimlrepo
+# Main Python-3.12 benchmark environment.
+#
+# Packages needing special build handling (RILS-ROLS and PyOperon) are installed
+# by setup.sh rather than from this requirements file. Symbolic-KAN is a pinned
+# source checkout created by setup.sh under external/. uDSR/DSO is deliberately
+# excluded because its upstream package pins legacy NumPy/Numba versions that are
+# incompatible with the project's Python-3.12 environment.
 
+ucimlrepo
 pytest
 pmlb
 
-# Evolutionary symbolic-regression baselines (Python >=3.10).
+# General-purpose symbolic regression.
 pysr==2.2.1
-pyoperon==0.6.1
+psrn
 
-# Official SR-KAN symbolic-regression implementation by Bühler & Guillén-Gosálbez.
-# Do NOT replace this with `srkan` from PyPI; that name currently refers to a
-# different spiking-network project.
+# Build prerequisites used by the special installers in setup.sh.
+pybind11
+scikit-build-core>=0.11.6
+nanobind>=2.11.0
+cmake
+ninja
+
+# Official SR-KAN implementation.  Do not replace with the unrelated PyPI
+# package named `srkan`.
 git+https://github.com/marcobuhler/SR-KAN.git
 
-# Contemporary symbolic-regression baselines used by the research_modern profile.
-# PSE/PSRN currently supports Python 3.9--3.12.
-psrn
-# RILS-ROLS builds its pybind11 extension from source on Linux.
-pybind11
-rils-rols
-# uDSR / DSO, official PyTorch refactor.
-git+https://github.com/dso-org/deep-symbolic-optimization-pytorch.git#subdirectory=dso
+# Sparse-library and parametric-family symbolic-regression baselines.
+pathos
+psutil
+pysindy==2.1.0
+parfam==0.0.2

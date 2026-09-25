@@ -141,10 +141,12 @@ OPTIONAL_MODEL_DEPENDENCIES = {
     # PyPI's package named ``srkan`` is an unrelated spiking-network project.
     "srkan": ("srkan", "git+https://github.com/marcobuhler/SR-KAN.git", True),
     # PSE/PSRN and RILS-ROLS are public Python packages used through their
-    # official APIs. Symbolic-KAN is vendored from the authors' repository and has no external package import.
+    # official APIs. Symbolic-KAN is a setup-managed pinned source checkout and has no package import preflight.
     "pse": ("psrn", "psrn", True),
     "rils_rols": ("rils_rols.rils_rols", "rils-rols", True),
     "udsr": ("dso", "git+https://github.com/dso-org/deep-symbolic-optimization-pytorch.git#subdirectory=dso", True),
+    "sindy": ("pysindy", "pysindy==2.1.0", True),
+    "parfam": ("parfam", "parfam==0.0.2", True),
 }
 
 

@@ -1442,8 +1442,8 @@ def test_research_modern_profile_adds_contemporary_symbolic_baselines():
     root = Path(__file__).resolve().parents[1]
     cfg = yaml.safe_load((root / "benchmarks" / "configs" / "default.yaml").read_text())
     modern = resolve_profile(cfg, "research_modern")
-    assert {"symbolic_kan", "pse", "rils_rols"}.issubset(modern["models"])
-    assert {"symbolic_kan", "pse", "rils_rols", "udsr"}.issubset(TRAINERS)
+    assert {"symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql"}.issubset(modern["models"])
+    assert {"symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql"}.issubset(TRAINERS)
     assert modern["model_config"]["pse"]["n_symbol_layers"] == 3
     assert modern["model_config"]["rils_rols"]["max_fit_calls"] == 100000
 
@@ -1455,6 +1455,8 @@ def test_modern_sr_requirements_are_declared():
     assert "rils-rols" in req
     assert "deep-symbolic-optimization-pytorch" in req
     assert "pybind11" in req
+    assert "pysindy==2.1.0" in req
+    assert "parfam==0.0.2" in req
 
 
 def test_research_modern_vocabulary_matching_across_symbolic_baselines():
@@ -1468,6 +1470,9 @@ def test_research_modern_vocabulary_matching_across_symbolic_baselines():
         SYMBOLIC_KAN_TARGET_CORE_NATIVE,
         TARGET_CORE_SYMBOLIC_LIBRARY,
         UDSR_TARGET_CORE_NATIVE,
+        SINDY_TARGET_CORE_NATIVE,
+        PARFAM_TARGET_CORE_FUNCTIONS,
+        EQL_TARGET_CORE_NATIVE,
         resolve_shared_benchmark_config,
     )
 
@@ -1539,3 +1544,50 @@ def test_research_modern_vocabulary_matching_across_symbolic_baselines():
     )
     assert rils_meta["shared_symbolic_native_exact_match"] is False
     assert "does not expose" in rils_meta["shared_symbolic_native_note"]
+
+    sindy, sindy_meta = resolve_shared_benchmark_config(
+        "sindy", spec, profile["model_config"]["sindy"], shared
+    )
+    assert tuple(sindy["primitive_library"]) == tuple(SINDY_TARGET_CORE_NATIVE)
+    assert sindy_meta["shared_symbolic_native_exact_match"] is True
+
+    parfam, parfam_meta = resolve_shared_benchmark_config(
+        "parfam", spec, profile["model_config"]["parfam"], shared
+    )
+    assert tuple(parfam["functions"]) == tuple(PARFAM_TARGET_CORE_FUNCTIONS)
+    assert parfam_meta["shared_symbolic_native_exact_match"] is False
+
+    eql, eql_meta = resolve_shared_benchmark_config(
+        "eql", spec, profile["model_config"]["eql"], shared
+    )
+    assert tuple(eql["unary_library"]) == tuple(EQL_TARGET_CORE_NATIVE)
+    assert eql["hidden_width"] == 12
+    assert eql_meta["shared_symbolic_native_exact_match"] is False
+
+
+
+def test_setup_reconstructs_gitignored_external_symbolic_kan_checkout():
+    root = Path(__file__).resolve().parents[1]
+    setup = (root / "setup.sh").read_text()
+    gitignore = (root / ".gitignore").read_text()
+
+    assert 'SYMBOLIC_KAN_COMMIT="${SYMBOLIC_KAN_COMMIT:-9481a82}"' in setup
+    assert 'SYMBOLIC_KAN_REPO="${SYMBOLIC_KAN_REPO:-https://github.com/sfaroughi3/Pub_Symbolic_KANs.git}"' in setup
+    assert 'install_symbolic_kan()' in setup
+    assert 'git clone "$SYMBOLIC_KAN_REPO" "$SYMBOLIC_KAN_DIR"' in setup
+    assert 'checkout --quiet --detach "$SYMBOLIC_KAN_COMMIT"' in setup
+    assert 'Exp_reaction_diffusion/symKanTraining.py' in setup
+    assert 'external/*' in gitignore
+
+
+def test_setup_keeps_special_binary_baselines_out_of_plain_requirements():
+    root = Path(__file__).resolve().parents[1]
+    req = (root / "benchmarks" / "requirements-benchmark.txt").read_text()
+    setup = (root / "setup.sh").read_text()
+
+    assert "rils-rols" not in [ln.strip() for ln in req.splitlines() if ln and not ln.startswith("#")]
+    assert "pyoperon" not in [ln.strip() for ln in req.splitlines() if ln and not ln.startswith("#")]
+    assert "deep-symbolic-optimization-pytorch" not in req
+    assert "--no-build-isolation rils-rols" in setup
+    assert "python script/dependencies.py" in setup
+    assert "patch_pyoperon_macos_rpath" in setup

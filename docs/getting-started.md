@@ -2,16 +2,23 @@
 
 ## Requirements
 
-The repository uses Python and PyTorch. `setup.sh` defaults to Python 3.12 and creates a virtual environment at `.env`.
+The repository uses Python and PyTorch. `setup.sh` defaults to Python 3.12 and
+creates a virtual environment at `.env`.
 
-Core installation:
+For the complete supported benchmark setup:
 
 ```bash
 ./setup.sh
 source .env/bin/activate
 ```
 
-Equivalent manual installation:
+Besides installing Python dependencies, the script reconstructs the gitignored
+third-party source checkouts used by the benchmark. It checks out official
+Symbolic-KAN at commit `9481a82` under `external/Pub_Symbolic_KANs`, clones and
+builds PyOperon under `external/pyoperon`, repairs its macOS runtime search path,
+and installs RILS-ROLS with build isolation disabled.
+
+Equivalent core-only installation:
 
 ```bash
 python3.12 -m venv .env
@@ -20,27 +27,22 @@ python -m pip install --upgrade pip setuptools wheel
 python -m pip install -r requirements.txt
 ```
 
-Benchmark-only dependencies are listed separately:
+`benchmarks/requirements-benchmark.txt` and
+`benchmarks/requirements-modern-sr.txt` contain the directly pip-installable
+subset only. They intentionally omit RILS-ROLS and PyOperon, which need the
+special handling in `setup.sh`, and Symbolic-KAN, which is a pinned source
+checkout rather than a Python package.
 
-```bash
-python -m pip install -r benchmarks/requirements-benchmark.txt
-```
-
-The benchmark dependency file includes the official SR-KAN implementation. To install only that baseline:
+The package named `srkan` on PyPI is not the dependency used by the benchmark.
+To install only the official SR-KAN implementation expected by the adapter:
 
 ```bash
 python -m pip install -r benchmarks/requirements-srkan.txt
 ```
 
-The package named `srkan` on PyPI is not the dependency used by the benchmark. `benchmarks/requirements-srkan.txt` points to the implementation expected by the adapter.
-
-To install only the additional PSE, RILS-ROLS, and uDSR dependencies used by the `research_modern` profile:
-
-```bash
-python -m pip install -r benchmarks/requirements-modern-sr.txt
-```
-
-PSE/PSRN currently requires Python 3.9--3.12.
+uDSR/DSO is intentionally not installed into the main Python-3.12 environment:
+its upstream package pins legacy NumPy/Numba versions. Use a separate compatible
+environment if the uDSR baseline is required.
 
 ## Verify the checkout
 

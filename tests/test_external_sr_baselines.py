@@ -1,11 +1,13 @@
+from pathlib import Path
 import sys
 import types
 
 import numpy as np
+import pytest
 
 from benchmarks.models import (
     TRAINERS, train_operon, train_pse, train_pysr, train_rils_rols, train_udsr,
-    train_srkan, train_symbolic_kan,
+    train_srkan, train_symbolic_kan, train_sindy, train_parfam, train_eql,
 )
 from benchmarks.specs import TASKS, make_synthetic_data
 
@@ -17,7 +19,7 @@ def _tiny_data():
 
 
 def test_evolutionary_symbolic_regressors_are_registered():
-    assert {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "pysr", "operon"}.issubset(TRAINERS)
+    assert {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "pysr", "operon"}.issubset(TRAINERS)
 
 
 def test_pysr_wrapper_uses_benchmark_data_and_reports_formula(monkeypatch):
@@ -152,7 +154,11 @@ def test_srkan_target_core_contains_only_matched_elementary_atoms(monkeypatch):
 
 
 
-def test_symbolic_kan_wrapper_uses_vendored_official_training_and_exports_formula():
+def test_symbolic_kan_wrapper_uses_official_training_and_exports_formula():
+    root = Path(__file__).resolve().parents[1]
+    upstream = root / "external" / "Pub_Symbolic_KANs" / "Exp_reaction_diffusion" / "symKanTraining.py"
+    if not upstream.exists():
+        pytest.skip("official Symbolic-KAN checkout is created by setup.sh")
     spec, data = _tiny_data()
     run = train_symbolic_kan(
         spec, data, 5,
@@ -292,4 +298,92 @@ def test_udsr_wrapper_enables_poly_and_gp_meld(monkeypatch):
     assert "poly" in seen["config"]["task"]["function_set"]
     assert seen["config"]["gp_meld"]["run_gp_meld"] is True
     assert seen["config"]["training"]["n_samples"] == 1000
+    assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+
+
+
+def test_sindy_wrapper_uses_pysindy_stlsq_and_exports_sparse_formula(monkeypatch):
+    seen = {}
+
+    class FakeSTLSQ:
+        def __init__(self, threshold=0.1, alpha=0.05, max_iter=20,
+                     normalize_columns=False, fit_intercept=False):
+            seen.setdefault("thresholds", []).append(float(threshold))
+            self.coef_ = None
+            self.intercept_ = 0.0
+
+        def fit(self, theta, y):
+            seen["theta_shape"] = tuple(np.asarray(theta).shape)
+            coef = np.zeros(theta.shape[1], dtype=float)
+            # Column 1 is the first non-constant primitive: x0.
+            coef[1] = 1.0
+            self.coef_ = coef.reshape(1, -1)
+            return self
+
+    mod = types.ModuleType("pysindy")
+    mod.STLSQ = FakeSTLSQ
+    monkeypatch.setitem(sys.modules, "pysindy", mod)
+
+    spec, data = _tiny_data()
+    run = train_sindy(
+        spec, data, 5,
+        {"primitive_library": ["x", "sin"], "max_interaction_order": 1,
+         "thresholds": [0.001, 0.01]},
+    )
+    assert run.model_name == "sindy"
+    assert run.extras["symbolic_backend"] == "pysindy_stlsq_static_library"
+    assert run.extras["sindy_optimizer"] == "STLSQ"
+    assert "x0" in run.extras["formula"]
+    assert seen["theta_shape"][0] == 24
+    assert seen["thresholds"] == [0.001, 0.01]
+    assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+
+
+def test_parfam_wrapper_uses_official_public_api(monkeypatch):
+    seen = {}
+
+    class FakeParFamWrapper:
+        def __init__(self, **kwargs):
+            seen["kwargs"] = kwargs
+            self.formula_reduced = "sin(x0)"
+
+        def fit(self, x, y, **kwargs):
+            seen["fit_shape"] = tuple(np.asarray(x).shape)
+            seen["fit_kwargs"] = kwargs
+            return self
+
+        def predict(self, x):
+            return np.sin(np.asarray(x)[:, 0])
+
+    mod = types.ModuleType("parfam")
+    mod.ParFamWrapper = FakeParFamWrapper
+    monkeypatch.setitem(sys.modules, "parfam", mod)
+
+    spec, data = _tiny_data()
+    run = train_parfam(
+        spec, data, 5,
+        {"config_name": "small", "iterate": True, "functions": ["sin", "cos"], "time_limit": 3},
+    )
+    assert run.model_name == "parfam"
+    assert run.extras["symbolic_backend"] == "parfam_official"
+    assert run.extras["formula"] == "sin(x0)"
+    assert seen["fit_shape"] == (24, 1)
+    assert seen["fit_kwargs"]["time_limit"] == 3.0
+    assert len(seen["kwargs"]["functions"]) == 2
+    assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+
+
+def test_eql_reproduction_trains_and_exports_formula():
+    spec, data = _tiny_data()
+    run = train_eql(
+        spec, data, 3,
+        {"device": "cpu", "hidden_width": 4, "n_hidden_layers": 1,
+         "unary_library": ["x", "sin"], "n_binary": 1,
+         "epochs": 6, "phase1_frac": 0.33, "phase2_frac": 0.66,
+         "lr": 1e-3, "l1_lambda": 1e-5, "prune_threshold": 1e-6},
+    )
+    assert run.model_name == "eql"
+    assert run.extras["symbolic_backend"] == "eql_pytorch_reproduction"
+    assert run.extras["eql_official_source_executed"] is False
+    assert isinstance(run.extras["formula"], str) and run.extras["formula"]
     assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics

@@ -85,6 +85,9 @@ MODEL_ORDER = [
     "pse",
     "rils_rols",
     "udsr",
+    "sindy",
+    "parfam",
+    "eql",
     "pysr",
     "operon",
     "anfis",
@@ -135,6 +138,9 @@ MODEL_LABELS = {
     "pse": "PSE",
     "rils_rols": "RILS-ROLS",
     "udsr": "uDSR",
+    "sindy": "SINDy (STLSQ)",
+    "parfam": "ParFam",
+    "eql": "EQL",
     "pysr": "PySR",
     "operon": "Operon (GP)",
     "anfis": "ANFIS",
@@ -177,6 +183,9 @@ MODEL_MARKERS = {
     "pse": "^",
     "rils_rols": "v",
     "udsr": "<",
+    "sindy": ">",
+    "parfam": "d",
+    "eql": "P",
     "pysr": "p",
     "operon": "X",
     "anfis": "H",
@@ -279,7 +288,7 @@ def _derive_symbolic_metrics(df: pd.DataFrame) -> pd.DataFrame:
         "autosym", "fastkan_autosym", "gsr", "fastkan_gsr", "gmp",
         "multkan_deep_autosym", "fast_multkan_deep_autosym",
         "multkan_deep_gsr", "fast_multkan_deep_gsr", "multkan_deep_gmp",
-        "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "pysr", "operon",
+        "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "pysr", "operon",
     }
     paper = x.get("paper_pipeline", pd.Series(np.nan, index=idx)).notna() | model_name.isin(symbolic_multkan_names)
     rulekan = model_name.str.startswith("rulekan") | model_name.str.startswith("power_rulekan")
@@ -1280,7 +1289,7 @@ def _formula_is_standardized_space(model: str, row=None) -> bool:
         if tag in {"standardized", "normalized", "zscore", "z_score"}:
             return True
     m = str(model or "").lower()
-    if m in {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "pysr", "operon", "autosym", "fastkan_autosym", "gsr", "fastkan_gsr", "gmp"}:
+    if m in {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "pysr", "operon", "autosym", "fastkan_autosym", "gsr", "fastkan_gsr", "gmp"}:
         return True
     if m.startswith("multkan_deep_") or m.startswith("fast_multkan_deep_"):
         return True

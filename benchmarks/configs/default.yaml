@@ -2408,6 +2408,9 @@ profiles:
     - symbolic_kan
     - pse
     - rils_rols
+    - sindy
+    - parfam
+    - eql
     - pysr
     - operon
     - anfis
@@ -2474,6 +2477,37 @@ profiles:
         gp_generations: 20
         gp_parallel_eval: false
         n_cores_batch: 1
+      sindy:
+        # Static SINDy sparse-library control: exact core10 unary atoms plus
+        # pairwise dictionary products, optimized with PySINDy STLSQ.
+        primitive_library: [x, x^2, 1/x, 1/x^2, sqrt, log, exp, sin, cos, tanh]
+        max_interaction_order: 2
+        thresholds: [1.0e-4, 1.0e-3, 1.0e-2, 5.0e-2]
+        alpha: 1.0e-6
+        max_iter: 100
+        normalize_columns: true
+      parfam:
+        # Official ICLR-2025 ParFam wrapper. Polynomial/rational structure is
+        # native; these configured analytic functions cover the remaining core10
+        # families as closely as the public API permits.
+        config_name: small
+        iterate: true
+        functions: [sin, cos, exp, log, sqrt, tanh]
+        time_limit: 1800
+      eql:
+        # Paper-faithful PyTorch reproduction of Equation Learner. The released
+        # authors' code targets legacy Theano/TensorFlow and is not Python-3.12
+        # compatible. Two layers let inverse-square be composed from square+inv.
+        hidden_width: 12
+        n_hidden_layers: 2
+        unary_library: [x, x^2, 1/x, sqrt, log, exp, sin, cos, tanh]
+        epochs: 1200
+        lr: 0.001
+        l1_lambda: 1.0e-5
+        phase1_frac: 0.3333333333
+        phase2_frac: 0.6666666667
+        prune_threshold: 0.001
+        simplify_formula: false
   research_exhaustive:
     extends: research
     description: Legacy exhaustive research matrix retained for appendix/diagnostic use only.

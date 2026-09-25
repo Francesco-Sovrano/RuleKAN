@@ -54,6 +54,8 @@ from .anfis import CompactANFIS, fit_compact_anfis
 from .symbolic_kan_baseline import (
     fit_official_symbolic_kan, official_formula, official_hardened_predict,
 )
+from .sindy_baseline import fit_static_sindy, sindy_formula, DEFAULT_SINDY_LIBRARY
+from .eql_baseline import EQLRegressor, fit_eql, eql_formula, DEFAULT_EQL_UNARY_LIBRARY
 from symbolic_kan.composition_rulekan import ComposedRuleKAN, depth2_composition_rescue
 from symbolic_kan.sum_product_kan import _fully_symbolic_continuous_refit
 
@@ -107,6 +109,9 @@ PSE_TARGET_CORE_NATIVE = (
 UDSR_TARGET_CORE_NATIVE = (
     "add", "sub", "mul", "div", "sin", "cos", "exp", "log", "poly",
 )
+SINDY_TARGET_CORE_NATIVE = TARGET_CORE_SYMBOLIC_LIBRARY
+PARFAM_TARGET_CORE_FUNCTIONS = ("sin", "cos", "exp", "log", "sqrt", "tanh")
+EQL_TARGET_CORE_NATIVE = DEFAULT_EQL_UNARY_LIBRARY
 
 # SR-KAN accepts a configurable univariate extraction library, but four of the
 # shared elementary atoms use different native names.
@@ -178,6 +183,9 @@ def resolve_shared_benchmark_config(
     is_pse = model_name == "pse"
     is_udsr = model_name == "udsr"
     is_rils_rols = model_name == "rils_rols"
+    is_sindy = model_name == "sindy"
+    is_parfam = model_name == "parfam"
+    is_eql = model_name == "eql"
     mult_units = 0
     additive_units = width
     if is_rulekan:
@@ -239,7 +247,8 @@ def resolve_shared_benchmark_config(
     shared_native_note = None
     supports_shared_library = (
         is_rulekan or is_multkan or is_srkan or is_symbolic_kan or is_pysr
-        or is_operon or is_pse or is_udsr or is_rils_rols
+        or is_operon or is_pse or is_udsr or is_rils_rols or is_sindy
+        or is_parfam or is_eql
     )
     if lib_name is not None and supports_shared_library:
         if isinstance(lib_name, str):
@@ -355,6 +364,35 @@ def resolve_shared_benchmark_config(
             shared_native_exact = False
             shared_native_note = (
                 "public RILS-ROLS API does not expose an operator-library control; method-native grammar retained"
+            )
+        elif is_sindy:
+            if resolved_lib_name != "core10":
+                raise ValueError("SINDy shared-library matching currently supports only target_core/core10")
+            out["primitive_library"] = list(SINDY_TARGET_CORE_NATIVE)
+            shared_native_library = list(SINDY_TARGET_CORE_NATIVE)
+            shared_native_exact = True
+            shared_native_note = (
+                "static sparse dictionary uses the exact core10 atoms; pairwise products are dictionary interactions, not recursive composition"
+            )
+        elif is_parfam:
+            if resolved_lib_name != "core10":
+                raise ValueError("ParFam shared-library matching currently supports only target_core/core10")
+            out["functions"] = list(PARFAM_TARGET_CORE_FUNCTIONS)
+            shared_native_library = [
+                "native polynomial/rational family", *PARFAM_TARGET_CORE_FUNCTIONS
+            ]
+            shared_native_exact = False
+            shared_native_note = (
+                "ParFam natively parameterizes polynomial/rational structure; configured transcendental functions match the remaining core10 families"
+            )
+        elif is_eql:
+            if resolved_lib_name != "core10":
+                raise ValueError("EQL shared-library matching currently supports only target_core/core10")
+            out["unary_library"] = list(EQL_TARGET_CORE_NATIVE)
+            shared_native_library = [*EQL_TARGET_CORE_NATIVE, "mul"]
+            shared_native_exact = False
+            shared_native_note = (
+                "EQL uses matched unary atoms plus structural multiplication; inverse-square is compositional across layers"
             )
 
     if sh.get("lr") is not None and (is_rulekan or is_multkan or model_name == "vanilla_kan"):
@@ -3176,7 +3214,7 @@ def train_symbolic_kan(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict
     """Run the authors' official Symbolic-KAN implementation.
 
     The upstream training/selection/hardening/LBFGS routine is executed
-    directly from the vendored ``sfaroughi3/Pub_Symbolic_KANs`` snapshot.
+    directly from the setup-managed ``sfaroughi3/Pub_Symbolic_KANs`` checkout.
     The benchmark adapter only supplies the already-created train/validation
     arrays and serializes the trained discrete model for common formula scoring.
     """
@@ -3851,6 +3889,197 @@ def train_operon(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, 
     return ModelRun("operon", metrics, extras)
 
 
+
+def train_sindy(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Static sparse-library regression using PySINDy's official STLSQ optimizer.
+
+    Classical SINDy identifies dynamical systems.  For this static symbolic-
+    regression benchmark we use its sparse-regression core on an explicit
+    analytic dictionary, making this a controlled SINDy-style library baseline
+    rather than pretending the data contain time derivatives.
+    """
+    if spec.task_type != "regression":
+        raise ValueError("SINDy sparse-library baseline supports regression tasks only")
+    x_train, y_train, x_test = _external_sr_arrays(data)
+    x_val = np.asarray(data.val_x.detach().cpu().numpy(), dtype=np.float64)
+    y_val = np.asarray(data.val_y.detach().cpu().reshape(-1).numpy(), dtype=np.float64)
+    names = _external_feature_names(data, x_train.shape[1])
+    thresholds = cfg.get("thresholds", [1e-4, 1e-3, 1e-2, 5e-2])
+    primitive_library = list(cfg.get("primitive_library", DEFAULT_SINDY_LIBRARY))
+
+    t0 = time.perf_counter()
+    fit, pred_np = fit_static_sindy(
+        x_train, y_train, x_val, y_val, x_test, names,
+        primitive_library=primitive_library,
+        max_interaction_order=int(cfg.get("max_interaction_order", 2)),
+        thresholds=[float(x) for x in thresholds],
+        optimizer_config=cfg,
+    )
+    seconds = time.perf_counter() - t0
+    formula = sindy_formula(fit, coefficient_threshold=float(cfg.get("formula_threshold", 1e-12)))
+    pred = torch.as_tensor(pred_np, dtype=data.test_y.dtype).reshape(-1, 1)
+    metrics = evaluate_predictions(pred, data.test_y.cpu(), data)
+    metrics["symbolic_seconds"] = float(seconds)
+    extras: Dict[str, Any] = {
+        "formula": formula,
+        "formula_input_space": "standardized",
+        "symbolic_backend": "pysindy_stlsq_static_library",
+        "symbolic_backend_version": "2.1.0",
+        "sindy_static_regression_adapter": True,
+        "sindy_optimizer": "STLSQ",
+        "sindy_selected_threshold": float(fit.threshold),
+        "sindy_library_size": int(fit.library_size),
+        "sindy_nonzero_terms": int(np.count_nonzero(np.abs(fit.coefficients) > 0)),
+        "sindy_max_interaction_order": int(cfg.get("max_interaction_order", 2)),
+        "sindy_primitive_library": primitive_library,
+        "parameters": int(np.count_nonzero(np.abs(fit.coefficients) > 0)),
+    }
+    return ModelRun("sindy", metrics, extras)
+
+
+def train_parfam(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Official ParFam ICLR-2025 implementation through its public wrapper."""
+    if spec.task_type != "regression":
+        raise ValueError("ParFam baseline currently supports regression tasks only")
+    try:
+        from parfam import ParFamWrapper
+    except ImportError as exc:
+        raise ImportError(
+            "ParFam baseline requires parfam==0.0.2; install benchmarks/requirements-benchmark.txt"
+        ) from exc
+    import sympy as sp
+
+    x_train, y_train, x_test = _external_sr_arrays(data)
+    function_names = [str(x) for x in cfg.get("functions", PARFAM_TARGET_CORE_FUNCTIONS)]
+    torch_functions = {
+        "sin": torch.sin,
+        "cos": torch.cos,
+        "exp": torch.exp,
+        "log": torch.log,
+        "sqrt": torch.sqrt,
+        "tanh": torch.tanh,
+    }
+    sympy_functions = {
+        "sin": sp.sin,
+        "cos": sp.cos,
+        "exp": sp.exp,
+        "log": sp.log,
+        "sqrt": sp.sqrt,
+        "tanh": sp.tanh,
+    }
+    unknown = [name for name in function_names if name not in torch_functions]
+    if unknown:
+        raise ValueError(f"unsupported ParFam configured functions: {unknown}")
+    funcs = [torch_functions[name] for name in function_names]
+    fnames = [sympy_functions[name] for name in function_names]
+
+    np.random.seed(int(seed))
+    torch.manual_seed(int(seed))
+    kwargs: Dict[str, Any] = {
+        "config_name": str(cfg.get("config_name", "small")),
+        "iterate": bool(cfg.get("iterate", True)),
+        "functions": funcs,
+        "function_names": fnames,
+    }
+    model = ParFamWrapper(**kwargs)
+    fit_kwargs: Dict[str, Any] = {}
+    if cfg.get("time_limit") is not None:
+        fit_kwargs["time_limit"] = float(cfg["time_limit"])
+    t0 = time.perf_counter()
+    model.fit(x_train, y_train, **fit_kwargs)
+    seconds = time.perf_counter() - t0
+    pred_np = np.asarray(model.predict(x_test), dtype=np.float64).reshape(-1)
+    if not np.isfinite(pred_np).all():
+        raise ValueError("ParFam returned non-finite predictions")
+    formula_obj = getattr(model, "formula_reduced", None)
+    if formula_obj is None:
+        formula_obj = getattr(model, "formula", None)
+    formula = str(formula_obj) if formula_obj is not None else "<formula unavailable>"
+
+    pred = torch.as_tensor(pred_np, dtype=data.test_y.dtype).reshape(-1, 1)
+    metrics = evaluate_predictions(pred, data.test_y.cpu(), data)
+    metrics["symbolic_seconds"] = float(seconds)
+    extras: Dict[str, Any] = {
+        "formula": formula,
+        "formula_input_space": "standardized",
+        "symbolic_backend": "parfam_official",
+        "symbolic_backend_version": "0.0.2",
+        "parfam_config_name": kwargs["config_name"],
+        "parfam_iterate": kwargs["iterate"],
+        "parfam_functions": function_names,
+        "parfam_time_limit": fit_kwargs.get("time_limit"),
+        "parameters": 0,
+    }
+    return ModelRun("parfam", metrics, extras)
+
+
+def train_eql(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Equation Learner architecture with the paper's three-phase sparsity schedule.
+
+    The authors' released implementations target legacy Theano/TensorFlow stacks;
+    this adapter is a transparent PyTorch reproduction of the EQL architecture
+    (affine maps, fixed analytic units, multiplication units, sparse refit), not
+    a claim that the original source code is executed unchanged.
+    """
+    if spec.task_type != "regression":
+        raise ValueError("EQL baseline currently supports regression tasks only")
+    device = str(cfg.get("device", "cpu"))
+    torch.manual_seed(int(seed))
+    np.random.seed(int(seed))
+    tx = data.train_x.to(device)
+    ty = data.train_y.to(device)
+    vx = data.val_x.to(device)
+    vy = data.val_y.to(device)
+    qx = data.test_x.to(device)
+    unary_library = list(cfg.get("unary_library", DEFAULT_EQL_UNARY_LIBRARY))
+    model = EQLRegressor(
+        int(tx.shape[1]),
+        hidden_width=int(cfg.get("hidden_width", 12)),
+        n_hidden_layers=int(cfg.get("n_hidden_layers", 2)),
+        unary_library=unary_library,
+        n_binary=None if cfg.get("n_binary") is None else int(cfg["n_binary"]),
+    ).to(device=device, dtype=tx.dtype)
+
+    t0 = time.perf_counter()
+    result = fit_eql(
+        model, tx, ty, vx, vy,
+        epochs=int(cfg.get("epochs", 1200)),
+        lr=float(cfg.get("lr", 1e-3)),
+        l1_lambda=float(cfg.get("l1_lambda", 1e-5)),
+        phase1_frac=float(cfg.get("phase1_frac", 1.0 / 3.0)),
+        phase2_frac=float(cfg.get("phase2_frac", 2.0 / 3.0)),
+        prune_threshold=float(cfg.get("prune_threshold", 1e-3)),
+    )
+    seconds = time.perf_counter() - t0
+    model = result.model
+    with torch.no_grad():
+        pred = model(qx)
+    metrics = evaluate_predictions(pred, data.test_y.to(device), data)
+    metrics["symbolic_seconds"] = float(seconds)
+    names = _external_feature_names(data, int(tx.shape[1]))
+    formula = eql_formula(
+        model, names,
+        coefficient_threshold=float(cfg.get("formula_threshold", 1e-10)),
+        simplify=bool(cfg.get("simplify_formula", False)),
+    )
+    extras: Dict[str, Any] = {
+        "formula": formula,
+        "formula_input_space": "standardized",
+        "symbolic_backend": "eql_pytorch_reproduction",
+        "eql_reference": "Sahoo, Lampert & Martius, ICML 2018",
+        "eql_official_source_executed": False,
+        "eql_reimplementation_reason": "official code targets legacy Theano/TensorFlow; benchmark uses a PyTorch architecture reproduction",
+        "eql_hidden_width": int(cfg.get("hidden_width", 12)),
+        "eql_hidden_layers": int(cfg.get("n_hidden_layers", 2)),
+        "eql_unary_library": unary_library,
+        "eql_epochs_run": int(result.epochs_run),
+        "eql_best_val_mse": float(result.best_val_mse),
+        "eql_nonzero_parameters": int(result.nonzero_parameters),
+        "parameters": _param_count(model),
+    }
+    return ModelRun("eql", metrics, extras, numeric_model=model, symbolic_model=model)
+
+
 def train_mlp(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
     device = str(cfg.get("device", "cpu"))
     d = int(data.train_x.shape[1])
@@ -4154,6 +4383,9 @@ TRAINERS = {
     "udsr": train_udsr,
     "pysr": train_pysr,
     "operon": train_operon,
+    "sindy": train_sindy,
+    "parfam": train_parfam,
+    "eql": train_eql,
     "anfis": train_anfis,
     "vanilla_kan": train_vanilla_kan,
     "mlp": train_mlp,
@@ -4163,7 +4395,7 @@ TRAINERS = {
 def model_supports_task(model_name: str, spec: TaskSpec) -> bool:
     # The five paper pipelines are symbolic-regression methods.  RuleKAN, KAN
     # and MLP additionally serve as predictive baselines on classification data.
-    if model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES or model_name in {"pysr", "operon", "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "power_rulekan", "power_rulekan_comp", "anfis"}:
+    if model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES or model_name in {"pysr", "operon", "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "power_rulekan", "power_rulekan_comp", "anfis"}:
         return spec.task_type == "regression"
     return model_name in TRAINERS
 

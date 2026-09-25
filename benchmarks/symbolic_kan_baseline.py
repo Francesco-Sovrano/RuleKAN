@@ -2,9 +2,10 @@ from __future__ import annotations
 
 """Adapter for the authors' official Symbolic-KAN implementation.
 
-The benchmark vendors an unmodified snapshot of
-``sfaroughi3/Pub_Symbolic_KANs`` under ``external/Pub_Symbolic_KANs``.  This
-module intentionally does *not* reimplement Symbolic-KAN.  It loads the
+The benchmark uses a pinned checkout of
+``sfaroughi3/Pub_Symbolic_KANs`` under ``external/Pub_Symbolic_KANs``. The
+checkout is reconstructed by ``setup.sh`` and is intentionally gitignored.
+This module does *not* reimplement Symbolic-KAN. It loads the
 upstream supervised-regression code from ``Exp_reaction_diffusion`` and calls
 its ``train_regression_onehot`` routine directly.
 
@@ -88,7 +89,7 @@ def load_official_symbolic_kan(
     subdir: str = _DEFAULT_SUBDIR,
     device: str | torch.device = "cpu",
 ) -> OfficialSymbolicKANAPI:
-    """Load the vendored/upstream Symbolic-KAN modules without rewriting them."""
+    """Load the pinned upstream Symbolic-KAN modules without rewriting them."""
     root = Path(repo_root).expanduser().resolve() if repo_root is not None else default_official_repo_root()
     src = root / str(subdir)
     required = [

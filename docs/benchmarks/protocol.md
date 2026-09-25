@@ -224,7 +224,7 @@ prints non-completed task/model/seed records with their status, error, elapsed t
 
 ## Optional external symbolic-regression dependencies
 
-`benchmarks/requirements-benchmark.txt` installs the external benchmark dependencies, including PySR, Operon, and the official SR-KAN implementation. The pinned evolutionary baselines are:
+`benchmarks/requirements-benchmark.txt` installs the directly pip-compatible benchmark dependencies, including PySR and the official SR-KAN implementation. RILS-ROLS and PyOperon are installed by `setup.sh` because they need special build handling; official Symbolic-KAN is reconstructed by `setup.sh` as a pinned source checkout under `external/`. The pinned evolutionary baselines are:
 
 ```text
 pysr==2.2.1
@@ -233,9 +233,9 @@ pyoperon==0.6.1
 
 SR-KAN is installed from the authors' GitHub repository; `benchmarks/requirements-srkan.txt` provides the narrow SR-KAN-only install. The unrelated PyPI package named `srkan` does not provide the API expected by the benchmark adapter.
 
-Selected external baselines are checked before job construction. Operon is import-tested through `pyoperon.sklearn`; SR-KAN is checked for the expected `regressor` and `SympyEvaluator` API; PSE is checked through `psrn`; RILS-ROLS is checked through `rils_rols.rils_rols`; uDSR is checked through `dso`; PySR installation is checked without importing the Julia bridge during preflight. Operator grammars and compute budgets are profile-controlled.
+Selected external baselines are checked before job construction. Operon is import-tested through `pyoperon.sklearn`; SR-KAN is checked for the expected `regressor` and `SympyEvaluator` API; PSE is checked through `psrn`; RILS-ROLS is checked through `rils_rols.rils_rols`; uDSR is checked through `dso`; SINDy is checked through `pysindy`; ParFam is checked through `parfam`; PySR installation is checked without importing the Julia bridge during preflight. EQL is implemented in-tree and has no extra runtime dependency beyond PyTorch/SymPy. Operator grammars and compute budgets are profile-controlled.
 
-The `research_modern` profile adds Symbolic-KAN, PSE, RILS-ROLS, and uDSR to the primary research matrix. PSE, RILS-ROLS, and uDSR use their public/official packages directly. Symbolic-KAN uses the authors' vendored `Pub_Symbolic_KANs` source at commit `9481a82`; the adapter calls the upstream regression training routine and supplies the benchmark data without rewriting the optimization, selection, hardening, or LBFGS logic.
+The `research_modern` profile adds Symbolic-KAN, PSE, RILS-ROLS, uDSR, SINDy, ParFam, and EQL to the primary research matrix. PSE, RILS-ROLS, uDSR, PySINDy, and ParFam use their public/official packages directly; EQL is an in-tree PyTorch reproduction of the published architecture and sparsity schedule. Symbolic-KAN uses the authors' `Pub_Symbolic_KANs` source, checked out by `setup.sh` at commit `9481a82`; the adapter calls the upstream regression training routine and supplies the benchmark data without rewriting the optimization, selection, hardening, or LBFGS logic.
 
 ## Commands
 

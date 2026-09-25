@@ -94,14 +94,17 @@ The shallow and deep methods are regression-only in the benchmark harness.
 | Identifier | System | Benchmark dependency |
 |---|---|---|
 | `srkan` | SR-KAN, KAN-guided divide-and-conquer symbolic regression | authors' GitHub repository (`benchmarks/requirements-srkan.txt`) |
-| `symbolic_kan` | Symbolic-KAN trainable analytic network | vendored authors' `Pub_Symbolic_KANs` code at commit `9481a82` |
+| `symbolic_kan` | Symbolic-KAN trainable analytic network | authors' `Pub_Symbolic_KANs` checkout pinned by `setup.sh` to commit `9481a82` |
 | `pse` | PSE with the official PSRN implementation | `psrn` |
 | `rils_rols` | RILS-ROLS iterated-local-search symbolic regression | `rils-rols` |
 | `udsr` | unified Deep Symbolic Regression (LINEAR/poly + GP meld) | official DSO PyTorch package |
+| `sindy` | SINDy-style static sparse-library regression using STLSQ | `pysindy==2.1.0` |
+| `parfam` | ParFam continuous-global-optimization symbolic regression | `parfam==0.0.2` |
+| `eql` | Equation Learner analytic-unit network | built-in PyTorch reproduction of the published architecture |
 | `pysr` | PySR / SymbolicRegression.jl evolutionary symbolic regression | `pysr==2.2.1` |
 | `operon` | Operon genetic-programming symbolic regression | `pyoperon==0.6.1` |
 
-The harness passes explicit operator sets and compute limits from the selected profile. Under `research`/`research_modern`, direct symbolic primitives are restricted to the shared `core10` vocabulary wherever the public method API permits; unavoidable method-native exceptions are recorded in run metadata. These methods are regression-only. The `research_modern` profile extends the primary `research` matrix with `symbolic_kan`, `pse`, `rils_rols`, and `udsr`. PSE, RILS-ROLS, and uDSR use their public/official packages; Symbolic-KAN executes the authors' vendored `train_regression_onehot` implementation directly, with the benchmark arrays injected in place of its demo data generator. Before a benchmark matrix is launched, selected external dependencies are validated. SR-KAN is intentionally installed from the authors' repository: the package currently published on PyPI under the name `srkan` is a different project, so the preflight also checks for the official `regressor` and `SympyEvaluator` API. Operon is checked by importing `pyoperon.sklearn`, which catches missing native/shared-library dependencies rather than producing one failed record per task. PySR installation is checked without importing the Julia bridge during preflight.
+The harness passes explicit operator sets and compute limits from the selected profile. Under `research`/`research_modern`, direct symbolic primitives are restricted to the shared `core10` vocabulary wherever the public method API permits; unavoidable method-native exceptions are recorded in run metadata. These methods are regression-only. The `research_modern` profile extends the primary `research` matrix with `symbolic_kan`, `pse`, `rils_rols`, `udsr`, `sindy`, `parfam`, and `eql`. PSE, RILS-ROLS, uDSR, PySINDy, and ParFam use their public/official packages; EQL is a transparent PyTorch reproduction because the released authors' implementations require legacy Theano/TensorFlow; Symbolic-KAN executes the authors' pinned `train_regression_onehot` implementation directly, with the benchmark arrays injected in place of its demo data generator. Before a benchmark matrix is launched, selected external dependencies are validated. SR-KAN is intentionally installed from the authors' repository: the package currently published on PyPI under the name `srkan` is a different project, so the preflight also checks for the official `regressor` and `SympyEvaluator` API. Operon is checked by importing `pyoperon.sklearn`, which catches missing native/shared-library dependencies rather than producing one failed record per task. PySR installation is checked without importing the Julia bridge during preflight.
 
 ## Trainable fuzzy-system baseline
 

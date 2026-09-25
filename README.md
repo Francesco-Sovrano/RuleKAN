@@ -39,23 +39,29 @@ source .env/bin/activate
 python -m pytest -q
 ```
 
-To install the benchmark-only dependencies used by external baselines:
+For the full benchmark environment, `setup.sh` installs the normal Python
+packages and also reconstructs the gitignored third-party source checkouts under
+`external/`: official Symbolic-KAN is pinned to commit `9481a82`, and PyOperon
+is cloned/built from source with the macOS runtime-path repair used by this
+project. RILS-ROLS is installed separately with build isolation disabled.
+These third-party directories should not be committed to RuleKAN.
 
-```bash
-python -m pip install -r benchmarks/requirements-benchmark.txt
-```
+`benchmarks/requirements-benchmark.txt` contains only dependencies that are safe
+to install directly into the main Python-3.12 virtual environment. It does
+**not** by itself install RILS-ROLS, PyOperon, or Symbolic-KAN; use `./setup.sh`
+for the complete benchmark setup.
 
-The benchmark dependency file includes the official SR-KAN implementation. To install only that external baseline:
+The official SR-KAN implementation can also be installed on its own with:
 
 ```bash
 python -m pip install -r benchmarks/requirements-srkan.txt
 ```
 
-PSE, RILS-ROLS, and uDSR can be installed separately with:
-
-```bash
-python -m pip install -r benchmarks/requirements-modern-sr.txt
-```
+`benchmarks/requirements-modern-sr.txt` is likewise only the directly
+pip-installable subset for the additional modern baselines. uDSR/DSO is
+intentionally not installed into the main Python-3.12 environment because its
+upstream package pins legacy NumPy/Numba versions; run it from a separate
+compatible environment if that baseline is required.
 
 ## Examples
 
