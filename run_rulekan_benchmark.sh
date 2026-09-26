@@ -127,6 +127,7 @@ echo
   --profile "$PROFILE" \
   --run-dir "$RUN_DIR" \
   --device "$DEVICE" \
+  --aggregate-every 999999 \
   --resume \
   --reuse-completed \
   "$@")
