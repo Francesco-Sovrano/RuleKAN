@@ -128,6 +128,7 @@ echo
   --run-dir "$RUN_DIR" \
   --device "$DEVICE" \
   --resume \
+  --reuse-completed \
   "$@")
 
 echo

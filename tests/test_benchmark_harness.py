@@ -91,7 +91,9 @@ def test_evolutionary_sr_dependencies_and_primary_profiles_are_registered():
     root = Path(__file__).resolve().parents[1]
     req = (root / "benchmarks" / "requirements-benchmark.txt").read_text()
     assert "pysr==2.2.1" in req
-    assert "pyoperon==0.6.1" in req
+    assert "pyoperon==0.6.1" not in req
+    assert "PyOperon" in req  # setup.sh handles the source build / macOS rpath repair
+    assert "pyoperon" in (root / "setup.sh").read_text().lower()
     assert {"pysr", "operon"}.issubset(TRAINERS)
     cfg = yaml.safe_load((root / "benchmarks" / "configs" / "default.yaml").read_text())
     for profile in ("quick", "standard", "full", "research", "fuzzy"):
@@ -1226,6 +1228,53 @@ def test_statistical_tests_use_task_level_medians_and_write_holm_outputs(tmp_pat
     assert (tmp_path / "figures" / "statistical_final_nrmse_ranks.pdf").exists()
 
 
+def test_statistical_ranks_ignore_non_main_records_from_same_run_dir(tmp_path: Path):
+    import json
+    import pandas as pd
+    import yaml
+    from benchmarks.aggregate import aggregate
+
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    main = ["rulekan", "power_rulekan_comp", "pysr"]
+    extras = ["sindy_unconstrained", "rulekan_no_product", "anfis", "pse"]
+    snapshot = {
+        "profile": "research_modern",
+        "config": {"main_comparison_models": main},
+    }
+    (tmp_path / "benchmark_config_snapshot.yaml").write_text(yaml.safe_dump(snapshot))
+
+    k = 0
+    for task_idx in range(8):
+        for model in [*main, *extras]:
+            for seed in range(3):
+                # Give extras absurdly good errors so leakage would visibly change ranks.
+                scale = 1e-6 if model in extras else {
+                    "rulekan": 1.0, "power_rulekan_comp": 0.5, "pysr": 1.5
+                }[model]
+                nrmse = scale * (0.01 + 0.001 * task_idx)
+                row = {
+                    "status": "completed", "suite": "synthetic_core",
+                    "task": f"main_task_{task_idx}", "task_type": "regression",
+                    "model": model, "seed": seed,
+                    "test_rmse": nrmse, "test_nrmse": nrmse,
+                    "symbolic_test_rmse": nrmse, "symbolic_test_nrmse": nrmse,
+                    "symbolic_seconds": 0.05, "elapsed_seconds": 0.1,
+                    "finished_unix": float(k + 1),
+                }
+                (runs / f"rank{k}.json").write_text(json.dumps(row)); k += 1
+
+    aggregate(tmp_path, quiet=True)
+    ranks = pd.read_csv(tmp_path / "statistical_final_nrmse_ranks.csv")
+    pair = pd.read_csv(tmp_path / "statistical_final_nrmse_pairwise.csv")
+    task = pd.read_csv(tmp_path / "statistical_final_nrmse_task_medians.csv")
+    assert set(ranks.model) == set(main)
+    assert set(pair.method_a).union(set(pair.method_b)) == set(main)
+    assert set(task.model) == set(main)
+    assert not set(extras).intersection(set(ranks.model))
+    assert (tmp_path / "statistical_model_set.txt").read_text().splitlines() == main
+
+
 def test_external_fuzzy_formula_backfill_unstandardizes_srkan_coordinates():
     """Expanded SR-KAN formulas must be scored in the raw fuzzy-rule gauge."""
     from benchmarks.aggregate import fuzzy_formula_recovery_scores, _row_input_standardization
@@ -1442,8 +1491,15 @@ def test_research_modern_profile_adds_contemporary_symbolic_baselines():
     root = Path(__file__).resolve().parents[1]
     cfg = yaml.safe_load((root / "benchmarks" / "configs" / "default.yaml").read_text())
     modern = resolve_profile(cfg, "research_modern")
-    assert {"symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql"}.issubset(modern["models"])
-    assert {"symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql"}.issubset(TRAINERS)
+    assert {"symbolic_kan", "pse", "rils_rols", "sindy", "parfam", "eql"}.issubset(modern["models"])
+    assert "udsr" not in modern["models"]  # separate legacy-Python environment only
+    assert {"symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "sindy_unconstrained", "parfam", "eql"}.issubset(TRAINERS)
+    assert "sindy_unconstrained" not in modern["models"]
+    assert modern["model_config"]["sindy"]["max_active_terms"] == 12
+    assert "sindy_unconstrained" not in modern["main_comparison_models"]
+    assert "pse" not in modern["main_comparison_models"]
+    assert "anfis" not in modern["main_comparison_models"]
+    assert len(modern["main_comparison_models"]) == 23
     assert modern["model_config"]["pse"]["n_symbol_layers"] == 3
     assert modern["model_config"]["rils_rols"]["max_fit_calls"] == 100000
 
@@ -1453,7 +1509,8 @@ def test_modern_sr_requirements_are_declared():
     req = (root / "benchmarks" / "requirements-modern-sr.txt").read_text()
     assert "psrn" in req
     assert "rils-rols" in req
-    assert "deep-symbolic-optimization-pytorch" in req
+    assert "deep-symbolic-optimization-pytorch" not in req
+    assert "uDSR/DSO" in req
     assert "pybind11" in req
     assert "pysindy==2.1.0" in req
     assert "parfam==0.0.2" in req
@@ -1549,7 +1606,18 @@ def test_research_modern_vocabulary_matching_across_symbolic_baselines():
         "sindy", spec, profile["model_config"]["sindy"], shared
     )
     assert tuple(sindy["primitive_library"]) == tuple(SINDY_TARGET_CORE_NATIVE)
+    assert sindy["max_active_terms"] == 12
+    assert sindy["max_interaction_order"] == min(3, int(sindy_meta["shared_max_product_order"]))
     assert sindy_meta["shared_symbolic_native_exact_match"] is True
+
+    sindy_u, sindy_u_meta = resolve_shared_benchmark_config(
+        "sindy_unconstrained", spec,
+        {**profile["model_config"]["sindy"], "max_active_terms": None}, shared
+    )
+    assert tuple(sindy_u["primitive_library"]) == tuple(SINDY_TARGET_CORE_NATIVE)
+    assert sindy_u["max_active_terms"] is None
+    assert sindy_u["max_interaction_order"] == sindy["max_interaction_order"]
+    assert sindy_u_meta["shared_symbolic_native_exact_match"] is True
 
     parfam, parfam_meta = resolve_shared_benchmark_config(
         "parfam", spec, profile["model_config"]["parfam"], shared
@@ -1561,7 +1629,10 @@ def test_research_modern_vocabulary_matching_across_symbolic_baselines():
         "eql", spec, profile["model_config"]["eql"], shared
     )
     assert tuple(eql["unary_library"]) == tuple(EQL_TARGET_CORE_NATIVE)
-    assert eql["hidden_width"] == 12
+    assert eql["units_per_type"] == 10
+    assert eql["total_layers"] == [2, 3, 4]
+    assert eql["phase1_frac"] == 0.25
+    assert eql["phase2_frac"] == 0.95
     assert eql_meta["shared_symbolic_native_exact_match"] is False
 
 
@@ -1591,3 +1662,113 @@ def test_setup_keeps_special_binary_baselines_out_of_plain_requirements():
     assert "--no-build-isolation rils-rols" in setup
     assert "python script/dependencies.py" in setup
     assert "patch_pyoperon_macos_rpath" in setup
+
+
+def test_external_fuzzy_backfill_unscorable_formula_is_zero_not_nan():
+    """Bounded-DNF overflow is a failed recovery, not missing structural data."""
+    import pandas as pd
+    from benchmarks.aggregate import _backfill_fuzzy_formula_metrics
+
+    # More outer terms than the bounded structural parser intentionally permits.
+    formula = " + ".join(f"sin({i + 1}*x0)" for i in range(300))
+    df = pd.DataFrame([{
+        "suite": "fuzzy_rules", "task": "fuzzy_ite_same_variable",
+        "task_type": "regression", "model": "external_test", "seed": 0,
+        "status": "completed", "formula": formula, "formula_input_space": "raw",
+    }])
+    out = _backfill_fuzzy_formula_metrics(df)
+    row = out.iloc[0]
+    assert float(row["fuzzy_rule_f1"]) == 0.0
+    assert float(row["fuzzy_gate_recall"]) == 0.0
+    assert float(row["fuzzy_branch_recall"]) == 0.0
+    assert float(row["fuzzy_exact_structure_recovery"]) == 0.0
+    assert float(row["fuzzy_formula_semantic_backfill_failed"]) == 1.0
+    assert row["fuzzy_formula_semantic_backfill_reason"] == "unscorable_formula_or_dnf_limit"
+
+
+def test_external_fuzzy_backfill_failed_run_is_zero_not_nan():
+    import pandas as pd
+    from benchmarks.aggregate import _backfill_fuzzy_formula_metrics
+
+    df = pd.DataFrame([{
+        "suite": "fuzzy_rules", "task": "fuzzy_ite_cross",
+        "task_type": "regression", "model": "external_test", "seed": 0,
+        "status": "failed", "error": "timeout",
+    }])
+    out = _backfill_fuzzy_formula_metrics(df)
+    row = out.iloc[0]
+    assert float(row["fuzzy_rule_f1"]) == 0.0
+    assert float(row["fuzzy_exact_structure_recovery"]) == 0.0
+    assert row["fuzzy_formula_semantic_backfill_reason"] == "run_status:failed"
+
+
+def test_resume_reuses_changed_build_completed_by_default(tmp_path, monkeypatch, capsys):
+    """Plain --resume/default invocation should actually behave like a cache."""
+    import json
+    import sys
+    from benchmarks import run_benchmark as rb
+
+    run_dir = tmp_path / "run"
+    runs = run_dir / "runs"
+    runs.mkdir(parents=True)
+    result = runs / rb._job_name("fuzzy_ite_cross", "rulekan", 0)
+    result.write_text(json.dumps({
+        "status": "completed", "task": "fuzzy_ite_cross", "suite": "fuzzy_rules",
+        "task_type": "regression", "model": "rulekan", "seed": 0,
+        "benchmark_build_fingerprint": "oldoldoldoldold1",
+    }))
+
+    monkeypatch.setattr(rb, "benchmark_build_fingerprint", lambda *a, **k: "newnewnewnewnew2")
+    monkeypatch.setattr(rb, "code_version", lambda *a, **k: "test")
+    monkeypatch.setattr(rb, "aggregate", lambda *a, **k: None)
+    monkeypatch.setattr(rb, "_validate_optional_model_dependencies", lambda models: (_ for _ in ()).throw(AssertionError("no runnable dependency preflight expected")))
+    monkeypatch.setattr(sys, "argv", [
+        "benchmarks.run_benchmark", "--profile", "ablation_quick",
+        "--tasks", "fuzzy_ite_cross", "--models", "rulekan", "--seeds", "0",
+        "--run-dir", str(run_dir),
+    ])
+
+    assert rb.main() == 0
+    out = capsys.readouterr().out
+    assert "reused 1 completed despite code/configuration changes" in out
+    assert "runnable=1" not in out
+
+
+def test_aggregate_fuzzy_structure_keeps_failed_external_run_in_denominator(tmp_path: Path):
+    import json
+    import pandas as pd
+    from benchmarks.aggregate import aggregate
+
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    rows = [
+        {
+            "status": "completed", "suite": "fuzzy_rules", "task": "fuzzy_ite_cross",
+            "task_type": "regression", "model": "rulekan", "seed": 0,
+            "test_rmse": 0.1, "test_nrmse": 0.1,
+            "symbolic_test_rmse": 0.1, "symbolic_test_nrmse": 0.1,
+            "symbolic_seconds": 0.1, "elapsed_seconds": 0.2,
+            "fuzzy_rule_f1": 1.0, "fuzzy_gate_recall": 1.0,
+            "fuzzy_branch_recall": 1.0, "fuzzy_exact_structure_recovery": 1.0,
+        },
+        {
+            "status": "failed", "suite": "fuzzy_rules", "task": "fuzzy_ite_cross",
+            "task_type": "regression", "model": "sindy", "seed": 0,
+            "error": "timeout",
+        },
+        {
+            "status": "completed", "suite": "fuzzy_rules", "task": "fuzzy_ite_cross",
+            "task_type": "regression", "model": "anfis", "seed": 0,
+            "test_rmse": 0.2, "test_nrmse": 0.2,
+        },
+    ]
+    for i, row in enumerate(rows):
+        (runs / f"r{i}.json").write_text(json.dumps(row))
+
+    aggregate(tmp_path, quiet=True)
+    fs = pd.read_csv(tmp_path / "fuzzy_summary.csv")
+    assert set(fs.model) == {"rulekan", "sindy"}
+    sr = fs[fs.model.eq("sindy")].iloc[0]
+    assert int(sr.n) == 1
+    assert float(sr.fuzzy_rule_f1_median) == 0.0
+    assert float(sr.fuzzy_exact_structure_recovery_median) == 0.0

@@ -87,7 +87,7 @@ Use `--device`, `--workers`, and `--cpu-threads-per-job` as with other benchmark
 The runner reuses completed records whose build fingerprint matches the active source/configuration fingerprint. To allow completed records with a different fingerprint to be reused:
 
 ```bash
-./run_rulekan_benchmark.sh ablation --reuse-completed
+./run_rulekan_benchmark.sh ablation --no-reuse-completed
 ```
 
 This does not create missing records. Conditions absent from the run directory can still execute.

@@ -118,6 +118,6 @@ The per-job runner additionally accepts `--shared-width`, `--shared-library`, an
 
 ## Provenance
 
-Each run directory contains a benchmark configuration snapshot. Every result JSON stores a build fingerprint derived from source and configuration inputs. Resume compares that fingerprint with the active build before reusing a completed record unless `--reuse-completed` is explicitly enabled.
+Each run directory contains a benchmark configuration snapshot. Every result JSON stores a build fingerprint derived from source and configuration inputs. Resume reuses completed records by default even across fingerprint changes; pass `--no-reuse-completed` to require an exact active-build match.
 
 The complete resolved baseline values for RuleKAN are documented in [RuleKAN-family configuration](configuration-rulekan.md). Numerical, symbolic, power, and baseline-specific fields are documented in the adjacent reference pages.

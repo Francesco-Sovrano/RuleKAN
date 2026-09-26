@@ -55,7 +55,7 @@ from .symbolic_kan_baseline import (
     fit_official_symbolic_kan, official_formula, official_hardened_predict,
 )
 from .sindy_baseline import fit_static_sindy, sindy_formula, DEFAULT_SINDY_LIBRARY
-from .eql_baseline import EQLRegressor, fit_eql, eql_formula, DEFAULT_EQL_UNARY_LIBRARY
+from .eql_baseline import EQLDivRegressor, fit_eql_model_selection, eql_formula, DEFAULT_EQL_UNARY_LIBRARY
 from symbolic_kan.composition_rulekan import ComposedRuleKAN, depth2_composition_rescue
 from symbolic_kan.sum_product_kan import _fully_symbolic_continuous_refit
 
@@ -183,7 +183,7 @@ def resolve_shared_benchmark_config(
     is_pse = model_name == "pse"
     is_udsr = model_name == "udsr"
     is_rils_rols = model_name == "rils_rols"
-    is_sindy = model_name == "sindy"
+    is_sindy = model_name in {"sindy", "sindy_unconstrained"}
     is_parfam = model_name == "parfam"
     is_eql = model_name == "eql"
     mult_units = 0
@@ -369,10 +369,14 @@ def resolve_shared_benchmark_config(
             if resolved_lib_name != "core10":
                 raise ValueError("SINDy shared-library matching currently supports only target_core/core10")
             out["primitive_library"] = list(SINDY_TARGET_CORE_NATIVE)
+            # Match the benchmark's task-specific product-order control.  The
+            # appendix unconstrained variant uses the identical dictionary; it
+            # differs only in the final active-term budget.
+            out["max_interaction_order"] = min(3, int(resolved_product_order))
             shared_native_library = list(SINDY_TARGET_CORE_NATIVE)
             shared_native_exact = True
             shared_native_note = (
-                "static sparse dictionary uses the exact core10 atoms; pairwise products are dictionary interactions, not recursive composition"
+                "static sparse dictionary uses the exact core10 atoms and the shared task-specific product order; main SINDy additionally caps the final active support at 12 non-bias terms"
             )
         elif is_parfam:
             if resolved_lib_name != "core10":
@@ -389,10 +393,10 @@ def resolve_shared_benchmark_config(
             if resolved_lib_name != "core10":
                 raise ValueError("EQL shared-library matching currently supports only target_core/core10")
             out["unary_library"] = list(EQL_TARGET_CORE_NATIVE)
-            shared_native_library = [*EQL_TARGET_CORE_NATIVE, "mul"]
+            shared_native_library = [*EQL_TARGET_CORE_NATIVE, "mul", "output_div"]
             shared_native_exact = False
             shared_native_note = (
-                "EQL uses matched unary atoms plus structural multiplication; inverse-square is compositional across layers"
+                "EQL-Div retains its native identity/sine/cosine hidden units, structural multiplication, and final division unit"
             )
 
     if sh.get("lr") is not None and (is_rulekan or is_multkan or model_name == "vanilla_kan"):
@@ -3890,33 +3894,79 @@ def train_operon(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, 
 
 
 
-def train_sindy(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
-    """Static sparse-library regression using PySINDy's official STLSQ optimizer.
+def _train_sindy_variant(
+    model_name: str,
+    spec: TaskSpec,
+    data: BenchmarkData,
+    seed: int,
+    cfg: Dict[str, Any],
+    *,
+    force_max_active_terms: int | None,
+) -> ModelRun:
+    """Shared implementation for budgeted and unconstrained static SINDy.
 
-    Classical SINDy identifies dynamical systems.  For this static symbolic-
-    regression benchmark we use its sparse-regression core on an explicit
-    analytic dictionary, making this a controlled SINDy-style library baseline
-    rather than pretending the data contain time derivatives.
+    ``sindy`` is the main-paper control and is always capped at 12 active
+    non-bias dictionary terms. ``sindy_unconstrained`` is an appendix
+    sensitivity condition that preserves the native STLSQ support size.  Both
+    variants use exactly the same primitive library, interaction-order policy,
+    threshold grid, train/validation split and coefficient estimator.
     """
     if spec.task_type != "regression":
         raise ValueError("SINDy sparse-library baseline supports regression tasks only")
+    if model_name not in {"sindy", "sindy_unconstrained"}:
+        raise ValueError(f"unknown SINDy variant {model_name!r}")
+
     x_train, y_train, x_test = _external_sr_arrays(data)
     x_val = np.asarray(data.val_x.detach().cpu().numpy(), dtype=np.float64)
     y_val = np.asarray(data.val_y.detach().cpu().reshape(-1).numpy(), dtype=np.float64)
     names = _external_feature_names(data, x_train.shape[1])
     thresholds = cfg.get("thresholds", [1e-4, 1e-3, 1e-2, 5e-2])
     primitive_library = list(cfg.get("primitive_library", DEFAULT_SINDY_LIBRARY))
+    interaction_order = int(cfg.get("max_interaction_order", 3))
+
+    # The model identity, not an editable YAML value, determines whether the
+    # main-paper complexity control is active.  This prevents an accidental
+    # ``max_active_terms: null`` from silently putting unconstrained SINDy back
+    # into the headline comparison.
+    if model_name == "sindy":
+        configured = cfg.get("max_active_terms", 12)
+        if configured is None:
+            raise ValueError(
+                "main-paper SINDy must have a finite max_active_terms budget; "
+                "use model='sindy_unconstrained' for the appendix sensitivity"
+            )
+        max_active_terms = int(configured)
+        if force_max_active_terms is not None:
+            max_active_terms = int(force_max_active_terms)
+        if max_active_terms != 12:
+            raise ValueError(
+                f"main-paper SINDy term budget must be 12, got {max_active_terms}; "
+                "change the appendix sensitivity model instead"
+            )
+        variant = "main_capped_12"
+    else:
+        max_active_terms = None
+        variant = "appendix_unconstrained"
 
     t0 = time.perf_counter()
     fit, pred_np = fit_static_sindy(
         x_train, y_train, x_val, y_val, x_test, names,
         primitive_library=primitive_library,
-        max_interaction_order=int(cfg.get("max_interaction_order", 2)),
+        max_interaction_order=interaction_order,
         thresholds=[float(x) for x in thresholds],
+        max_active_terms=max_active_terms,
         optimizer_config=cfg,
     )
     seconds = time.perf_counter() - t0
-    formula = sindy_formula(fit, coefficient_threshold=float(cfg.get("formula_threshold", 1e-12)))
+    formula_threshold = float(cfg.get("formula_threshold", 1e-12))
+    formula = sindy_formula(fit, coefficient_threshold=formula_threshold)
+    active_formula_terms = int(np.count_nonzero(np.abs(fit.coefficients[1:]) >= formula_threshold))
+    bias_present = bool(
+        abs(float(fit.intercept)) >= formula_threshold
+        or (fit.coefficients.size > 0 and abs(float(fit.coefficients[0])) >= formula_threshold)
+    )
+    formula_term_count = int(active_formula_terms + int(bias_present))
+
     pred = torch.as_tensor(pred_np, dtype=data.test_y.dtype).reshape(-1, 1)
     metrics = evaluate_predictions(pred, data.test_y.cpu(), data)
     metrics["symbolic_seconds"] = float(seconds)
@@ -3927,15 +3977,39 @@ def train_sindy(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, A
         "symbolic_backend_version": "2.1.0",
         "sindy_static_regression_adapter": True,
         "sindy_optimizer": "STLSQ",
+        "sindy_variant": variant,
         "sindy_selected_threshold": float(fit.threshold),
         "sindy_library_size": int(fit.library_size),
-        "sindy_nonzero_terms": int(np.count_nonzero(np.abs(fit.coefficients) > 0)),
-        "sindy_max_interaction_order": int(cfg.get("max_interaction_order", 2)),
+        # Active terms exclude the uncharged constant/bias column.
+        "sindy_raw_nonzero_terms": int(fit.raw_nonzero_terms),
+        "sindy_nonzero_terms": int(fit.active_terms),
+        "sindy_active_terms": int(fit.active_terms),
+        "sindy_max_active_terms": None if fit.max_active_terms is None else int(fit.max_active_terms),
+        "sindy_support_capped": bool(fit.support_capped),
+        "sindy_formula_term_count": int(formula_term_count),
+        "sindy_formula_characters": int(len(formula)),
+        "sindy_max_interaction_order": int(interaction_order),
+        "sindy_interaction_order_policy": "shared_task_product_order",
         "sindy_primitive_library": primitive_library,
-        "parameters": int(np.count_nonzero(np.abs(fit.coefficients) > 0)),
+        "parameters": int(fit.active_terms),
     }
-    return ModelRun("sindy", metrics, extras)
+    return ModelRun(model_name, metrics, extras)
 
+
+def train_sindy(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
+    """Main-paper SINDy control: STLSQ with at most 12 active non-bias terms."""
+    return _train_sindy_variant(
+        "sindy", spec, data, seed, cfg, force_max_active_terms=12
+    )
+
+
+def train_sindy_unconstrained(
+    spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]
+) -> ModelRun:
+    """Appendix sensitivity: native-capacity STLSQ with no active-term cap."""
+    return _train_sindy_variant(
+        "sindy_unconstrained", spec, data, seed, cfg, force_max_active_terms=None
+    )
 
 def train_parfam(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
     """Official ParFam ICLR-2025 implementation through its public wrapper."""
@@ -4014,15 +4088,15 @@ def train_parfam(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, 
 
 
 def train_eql(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any]) -> ModelRun:
-    """Equation Learner architecture with the paper's three-phase sparsity schedule.
+    """Budgeted PyTorch reproduction of the ICML-2018 EQL-Div protocol.
 
-    The authors' released implementations target legacy Theano/TensorFlow stacks;
-    this adapter is a transparent PyTorch reproduction of the EQL architecture
-    (affine maps, fixed analytic units, multiplication units, sparse refit), not
-    a claim that the original source code is executed unchanged.
+    The original released implementations target legacy Theano/TensorFlow. This
+    reproduction uses the paper's native hidden units (identity/sine/cosine and
+    multiplication), regularized final division, t1=T/4 and t2=19T/20 sparsity
+    phases, and validation+sparsity model selection over depths and L1 strengths.
     """
     if spec.task_type != "regression":
-        raise ValueError("EQL baseline currently supports regression tasks only")
+        raise ValueError("EQL-Div baseline currently supports regression tasks only")
     device = str(cfg.get("device", "cpu"))
     torch.manual_seed(int(seed))
     np.random.seed(int(seed))
@@ -4032,28 +4106,35 @@ def train_eql(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any
     vy = data.val_y.to(device)
     qx = data.test_x.to(device)
     unary_library = list(cfg.get("unary_library", DEFAULT_EQL_UNARY_LIBRARY))
-    model = EQLRegressor(
-        int(tx.shape[1]),
-        hidden_width=int(cfg.get("hidden_width", 12)),
-        n_hidden_layers=int(cfg.get("n_hidden_layers", 2)),
-        unary_library=unary_library,
-        n_binary=None if cfg.get("n_binary") is None else int(cfg["n_binary"]),
-    ).to(device=device, dtype=tx.dtype)
+    total_layers = [int(x) for x in cfg.get("total_layers", [2, 3, 4])]
+    l1_lambdas = [float(x) for x in cfg.get("l1_lambdas", [1e-6, 1e-5, 1e-4, 3.162277660168379e-4])]
 
     t0 = time.perf_counter()
-    result = fit_eql(
-        model, tx, ty, vx, vy,
-        epochs=int(cfg.get("epochs", 1200)),
+    result, candidate_rows = fit_eql_model_selection(
+        tx, ty, vx, vy,
+        input_dim=int(tx.shape[1]),
+        unary_library=unary_library,
+        total_layers=total_layers,
+        l1_lambdas=l1_lambdas,
+        units_per_type=int(cfg.get("units_per_type", 10)),
+        n_binary=None if cfg.get("n_binary") is None else int(cfg["n_binary"]),
+        steps_per_hidden_layer=int(cfg.get("steps_per_hidden_layer", 10000)),
         lr=float(cfg.get("lr", 1e-3)),
-        l1_lambda=float(cfg.get("l1_lambda", 1e-5)),
-        phase1_frac=float(cfg.get("phase1_frac", 1.0 / 3.0)),
-        phase2_frac=float(cfg.get("phase2_frac", 2.0 / 3.0)),
+        adam_eps=float(cfg.get("adam_eps", 1e-4)),
+        phase1_frac=float(cfg.get("phase1_frac", 0.25)),
+        phase2_frac=float(cfg.get("phase2_frac", 0.95)),
         prune_threshold=float(cfg.get("prune_threshold", 1e-3)),
+        batch_size=int(cfg.get("batch_size", 20)),
+        penalty_every=int(cfg.get("penalty_every", 50)),
+        eval_division_threshold=float(cfg.get("eval_division_threshold", 1e-4)),
+        selection_error_weight=float(cfg.get("selection_error_weight", 0.5)),
+        selection_sparsity_weight=float(cfg.get("selection_sparsity_weight", 0.5)),
+        seed=int(seed),
     )
     seconds = time.perf_counter() - t0
     model = result.model
     with torch.no_grad():
-        pred = model(qx)
+        pred = model(qx, division_threshold=float(cfg.get("eval_division_threshold", 1e-4)))
     metrics = evaluate_predictions(pred, data.test_y.to(device), data)
     metrics["symbolic_seconds"] = float(seconds)
     names = _external_feature_names(data, int(tx.shape[1]))
@@ -4065,16 +4146,23 @@ def train_eql(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, Any
     extras: Dict[str, Any] = {
         "formula": formula,
         "formula_input_space": "standardized",
-        "symbolic_backend": "eql_pytorch_reproduction",
+        "symbolic_backend": "eql_div_pytorch_reproduction",
         "eql_reference": "Sahoo, Lampert & Martius, ICML 2018",
         "eql_official_source_executed": False,
-        "eql_reimplementation_reason": "official code targets legacy Theano/TensorFlow; benchmark uses a PyTorch architecture reproduction",
-        "eql_hidden_width": int(cfg.get("hidden_width", 12)),
-        "eql_hidden_layers": int(cfg.get("n_hidden_layers", 2)),
-        "eql_unary_library": unary_library,
-        "eql_epochs_run": int(result.epochs_run),
-        "eql_best_val_mse": float(result.best_val_mse),
-        "eql_nonzero_parameters": int(result.nonzero_parameters),
+        "eql_reimplementation_reason": "official code targets legacy Theano/TensorFlow; benchmark uses a PyTorch EQL-Div protocol reproduction",
+        "eql_protocol": "EQL-Div; t1=T/4; t2=19T/20; T=(L-1)*steps_per_hidden_layer; validation+sparsity selection",
+        "eql_native_unary_library": unary_library,
+        "eql_units_per_type": int(cfg.get("units_per_type", 10)),
+        "eql_candidate_total_layers": total_layers,
+        "eql_candidate_l1_lambdas": l1_lambdas,
+        "eql_lambda_grid_note": "coarse budgeted subset spanning the paper's 1e-6 to 10^-3.5 range",
+        "eql_selected_total_layers": int(result.total_layers),
+        "eql_selected_l1_lambda": float(result.l1_lambda),
+        "eql_steps_run_selected": int(result.steps_run),
+        "eql_best_val_mse": float(result.val_mse),
+        "eql_nonzero_weights": int(result.nonzero_weights),
+        "eql_active_units": int(result.active_units),
+        "eql_model_selection_candidates": candidate_rows,
         "parameters": _param_count(model),
     }
     return ModelRun("eql", metrics, extras, numeric_model=model, symbolic_model=model)
@@ -4384,6 +4472,7 @@ TRAINERS = {
     "pysr": train_pysr,
     "operon": train_operon,
     "sindy": train_sindy,
+    "sindy_unconstrained": train_sindy_unconstrained,
     "parfam": train_parfam,
     "eql": train_eql,
     "anfis": train_anfis,
@@ -4395,7 +4484,7 @@ TRAINERS = {
 def model_supports_task(model_name: str, spec: TaskSpec) -> bool:
     # The five paper pipelines are symbolic-regression methods.  RuleKAN, KAN
     # and MLP additionally serve as predictive baselines on classification data.
-    if model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES or model_name in {"pysr", "operon", "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "power_rulekan", "power_rulekan_comp", "anfis"}:
+    if model_name in PAPER_PIPELINES or model_name in DEEP_MULTKAN_PIPELINES or model_name in {"pysr", "operon", "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "sindy_unconstrained", "parfam", "eql", "power_rulekan", "power_rulekan_comp", "anfis"}:
         return spec.task_type == "regression"
     return model_name in TRAINERS
 

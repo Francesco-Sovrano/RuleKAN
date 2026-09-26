@@ -88,6 +88,12 @@ The executable benchmark definition is `benchmarks/configs/default.yaml`. The sh
 ./run_rulekan_benchmark.sh width_sensitivity
 ```
 
+SINDy is complexity-controlled in the main comparison: `sindy` is **SINDy-12**, with at most 12 active non-bias library terms. The native-capacity unconstrained variant is appendix-only. Convenience commands are:
+
+```bash
+./run_sindy12_main.sh       # rerun only the main-paper SINDy-12 baseline
+```
+
 The main profiles include:
 
 | Profile | Seeds | Tasks | Methods | Purpose |
@@ -168,10 +174,10 @@ Aggregate tables and figures can be regenerated from the existing per-condition 
 python -m benchmarks.aggregate --run-dir benchmark_results/current
 ```
 
-The benchmark runner normally reuses a completed condition only when its stored build fingerprint matches the active source and configuration. To allow completed records from a different fingerprint to be reused, pass `--reuse-completed`:
+The benchmark runner resumes by default and reuses completed condition records even when the repository build fingerprint has changed. The stored fingerprint remains available for provenance. Use `--no-reuse-completed` when you deliberately want strict same-build reruns after changing model or configuration code:
 
 ```bash
-./run_rulekan_benchmark.sh ablation --reuse-completed
+./run_rulekan_benchmark.sh ablation --no-reuse-completed
 ```
 
 This option affects completed records only; conditions that are absent or incomplete can still be scheduled.

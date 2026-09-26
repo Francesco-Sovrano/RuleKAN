@@ -77,3 +77,6 @@ RuleKAN's affine-partition mechanism is not a separate fuzzy inference engine. I
 SRBench evaluates symbolic-regression methods across synthetic and real problems and emphasizes reproducible accuracy/complexity comparisons [12]. The repository follows the same general concern for explicit budgets and reproducibility: benchmark profiles fix train/validation/test splits, symbolic libraries, capacities, seeds and per-job timeouts; every run records a build fingerprint; predictive metrics are separated from support and fuzzy-rule recovery metrics.
 
 The exact benchmark protocol and model identifiers are documented in [Benchmark protocol](benchmarks/protocol.md) and [Benchmark methods](benchmarks/methods.md). Bibliographic details are in [References](references.md).
+
+
+For the controlled benchmark, the main SINDy baseline is reported as SINDy-12: the fixed-library expression is limited to 12 active non-bias terms. The unconstrained/native-capacity result is reserved for an appendix sensitivity because it can trade formula length for predictive accuracy.

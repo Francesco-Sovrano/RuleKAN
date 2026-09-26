@@ -738,6 +738,28 @@ profiles:
     - operon
     - anfis
     - multkan_deep_gsr
+    # Only these methods enter headline pairwise tests, Friedman tests, and mean ranks.
+    # ANFIS is retained as a task-specific fuzzy predictive reference, not as a
+    # symbolic-regression method in the main statistical panel.
+    main_comparison_models:
+    - rulekan
+    - rulekan_comp
+    - rulekan_adaptive
+    - rulekan_fast
+    - rulekan_omp_full
+    - sisp
+    - sisp_comp
+    - power_rulekan
+    - power_rulekan_comp
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - srkan
+    - pysr
+    - operon
+    - multkan_deep_gsr
     suites:
     - fuzzy_rules
     - synthetic_core
@@ -2415,6 +2437,33 @@ profiles:
     - operon
     - anfis
     - multkan_deep_gsr
+    # The paper's 23-method panel. Extra records in the same run directory
+    # (ablations, PSE, ANFIS, or appendix-only sindy_unconstrained) are excluded
+    # from task-level pairwise tests, Friedman tests, and mean-rank computation.
+    main_comparison_models:
+    - rulekan
+    - rulekan_comp
+    - rulekan_adaptive
+    - rulekan_fast
+    - rulekan_omp_full
+    - sisp
+    - sisp_comp
+    - power_rulekan
+    - power_rulekan_comp
+    - autosym
+    - fastkan_autosym
+    - gsr
+    - fastkan_gsr
+    - gmp
+    - srkan
+    - symbolic_kan
+    - rils_rols
+    - sindy
+    - parfam
+    - eql
+    - pysr
+    - operon
+    - multkan_deep_gsr
     model_config:
       symbolic_kan:
         # Authors' official Pub_Symbolic_KANs implementation, executed through
@@ -2478,10 +2527,14 @@ profiles:
         gp_parallel_eval: false
         n_cores_batch: 1
       sindy:
-        # Static SINDy sparse-library control: exact core10 unary atoms plus
-        # pairwise dictionary products, optimized with PySINDy STLSQ.
+        # Main-paper SINDy-12 control. The fixed core10 dictionary uses the
+        # shared task-specific product order (never above 3), but the returned
+        # expression may contain at most 12 active non-bias library terms.
+        # Over-budget STLSQ candidates are reduced by contribution strength and
+        # jointly OLS-refit before validation selection.
         primitive_library: [x, x^2, 1/x, 1/x^2, sqrt, log, exp, sin, cos, tanh]
-        max_interaction_order: 2
+        max_interaction_order: 3
+        max_active_terms: 12
         thresholds: [1.0e-4, 1.0e-3, 1.0e-2, 5.0e-2]
         alpha: 1.0e-6
         max_iter: 100
@@ -2495,19 +2548,53 @@ profiles:
         functions: [sin, cos, exp, log, sqrt, tanh]
         time_limit: 1800
       eql:
-        # Paper-faithful PyTorch reproduction of Equation Learner. The released
-        # authors' code targets legacy Theano/TensorFlow and is not Python-3.12
-        # compatible. Two layers let inverse-square be composed from square+inv.
-        hidden_width: 12
-        n_hidden_layers: 2
+        # Budgeted PyTorch reproduction of the ICML-2018 EQL-Div protocol.
+        # Native hidden units are identity/sine/cosine plus multiplication; the
+        # scalar output is a regularized division. The paper's t1/t2 schedule
+        # and L={2,3,4} depth selection are retained. The lambda sweep is a
+        # coarse subset spanning the paper's range to respect the job budget.
         unary_library: [x, x^2, 1/x, sqrt, log, exp, sin, cos, tanh]
-        epochs: 1200
+        units_per_type: 10
+        total_layers: [2, 3, 4]
+        l1_lambdas: [1.0e-6, 1.0e-5, 1.0e-4, 3.162277660168379e-4]
+        steps_per_hidden_layer: 10000
         lr: 0.001
-        l1_lambda: 1.0e-5
-        phase1_frac: 0.3333333333
-        phase2_frac: 0.6666666667
+        adam_eps: 0.0001
+        batch_size: 20
+        phase1_frac: 0.25
+        phase2_frac: 0.95
         prune_threshold: 0.001
+        penalty_every: 50
+        eval_division_threshold: 1.0e-4
+        selection_error_weight: 0.5
+        selection_sparsity_weight: 0.5
         simplify_formula: false
+  sindy_sensitivity:
+    extends: research_modern
+    description: Appendix-only SINDy complexity sensitivity; never used for the main 23-method panel.
+    models:
+    - sindy
+    - sindy_unconstrained
+    suites:
+    - fuzzy_rules
+    - synthetic_core
+    - power_expression_stress
+    - nested_stress
+    - kan_canonical
+    - feynman
+    model_config:
+      sindy_unconstrained:
+        # Same library/order/optimizer as SINDy-12, but no active-term cap.
+        # This condition quantifies how much predictive accuracy can be bought
+        # by allowing very long fixed-dictionary expansions.
+        primitive_library: [x, x^2, 1/x, 1/x^2, sqrt, log, exp, sin, cos, tanh]
+        max_interaction_order: 3
+        max_active_terms: null
+        thresholds: [1.0e-4, 1.0e-3, 1.0e-2, 5.0e-2]
+        alpha: 1.0e-6
+        max_iter: 100
+        normalize_columns: true
+
   research_exhaustive:
     extends: research
     description: Legacy exhaustive research matrix retained for appendix/diagnostic use only.

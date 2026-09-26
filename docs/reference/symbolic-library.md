@@ -114,7 +114,7 @@ External symbolic-regression systems are matched as closely as their public APIs
 - **PSE/PSRN:** its documented arithmetic/identity plus `sin,cos,exp,log,tanh` grammar is retained. Square and reciprocal can be composed, but the configured public grammar has no dedicated square-root token.
 - **uDSR:** the public uDSR function set is retained, including its defining `poly`/LINEAR token; its public grammar does not provide a literal one-to-one `core10` mapping.
 - **RILS-ROLS:** the public estimator does not expose an operator-library constructor option, so its method-native grammar is retained.
-- **SINDy:** the static dictionary contains the exact ten elementary atoms. The adapter additionally includes pairwise products of dictionary columns; this is an explicit sparse-library interaction mechanism, not recursive symbolic composition.
+- **SINDy-12:** the static dictionary contains the exact ten elementary atoms and tensor-product interactions up to the shared task-specific factor order (maximum three). The main-paper variant is capped at 12 active non-bias library terms; a constant/bias is uncharged. The appendix-only `sindy_unconstrained` condition uses the same dictionary and STLSQ optimizer without the final support cap, specifically to quantify the predictive/complexity trade-off of long fixed-library expansions.
 - **ParFam:** polynomial and rational structure is native to the parametric family. The configured analytic functions are `sin, cos, exp, log, sqrt, tanh`, which cover the remaining `core10` families as closely as the public wrapper permits.
 - **EQL:** the unary bank is `x, x^2, 1/x, sqrt, log, exp, sin, cos, tanh` plus structural multiplication units. Inverse-square is compositional across the two EQL layers.
 

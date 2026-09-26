@@ -13,6 +13,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
+import yaml
 
 try:
     import sympy as sp
@@ -86,6 +87,7 @@ MODEL_ORDER = [
     "rils_rols",
     "udsr",
     "sindy",
+    "sindy_unconstrained",
     "parfam",
     "eql",
     "pysr",
@@ -138,9 +140,10 @@ MODEL_LABELS = {
     "pse": "PSE",
     "rils_rols": "RILS-ROLS",
     "udsr": "uDSR",
-    "sindy": "SINDy (STLSQ)",
+    "sindy": "SINDy-12 (STLSQ)",
+    "sindy_unconstrained": "SINDy (unconstrained)",
     "parfam": "ParFam",
-    "eql": "EQL",
+    "eql": "EQL-Div",
     "pysr": "PySR",
     "operon": "Operon (GP)",
     "anfis": "ANFIS",
@@ -184,6 +187,7 @@ MODEL_MARKERS = {
     "rils_rols": "v",
     "udsr": "<",
     "sindy": ">",
+    "sindy_unconstrained": "v",
     "parfam": "d",
     "eql": "P",
     "pysr": "p",
@@ -230,6 +234,51 @@ def _ordered_tasks(df: pd.DataFrame) -> list[str]:
     rows = rows.assign(_priority=rows["suite"].astype(str).ne("fuzzy_rules").astype(int))
     rows = rows.sort_values(["_priority"], kind="stable")
     return rows["task"].astype(str).tolist()
+
+
+def _configured_main_comparison_models(run_dir: Path) -> list[str] | None:
+    """Return the profile-defined method set used for headline statistics.
+
+    A run directory may intentionally contain extra records (ablations,
+    task-specific references, or appendix-only conditions such as
+    ``sindy_unconstrained``).  Those records remain available to descriptive
+    summaries, but must never leak into the main task-level ranks/tests.
+    """
+    snapshot = run_dir / "benchmark_config_snapshot.yaml"
+    if not snapshot.exists():
+        return None
+    try:
+        payload = yaml.safe_load(snapshot.read_text()) or {}
+    except Exception:
+        return None
+    profile = payload.get("config", payload) if isinstance(payload, dict) else {}
+    if not isinstance(profile, dict):
+        return None
+    values = profile.get("main_comparison_models")
+    if (not isinstance(values, (list, tuple)) or not values) and isinstance(payload, dict):
+        # Backward-compatible rescue for run directories whose snapshot was
+        # created before ``main_comparison_models`` existed.  The profile name
+        # is enough to resolve the current explicit statistical panel.
+        profile_name = payload.get("profile")
+        if profile_name:
+            try:
+                from .config_utils import resolve_profile
+                cfg_path = Path(__file__).resolve().parent / "configs" / "default.yaml"
+                cfg = yaml.safe_load(cfg_path.read_text()) or {}
+                resolved = resolve_profile(cfg, str(profile_name))
+                values = resolved.get("main_comparison_models")
+            except Exception:
+                values = None
+    if not isinstance(values, (list, tuple)) or not values:
+        return None
+    out = []
+    seen = set()
+    for value in values:
+        model = str(value)
+        if model not in seen:
+            seen.add(model)
+            out.append(model)
+    return out or None
 
 
 def _load(run_dir: Path) -> pd.DataFrame:
@@ -288,7 +337,7 @@ def _derive_symbolic_metrics(df: pd.DataFrame) -> pd.DataFrame:
         "autosym", "fastkan_autosym", "gsr", "fastkan_gsr", "gmp",
         "multkan_deep_autosym", "fast_multkan_deep_autosym",
         "multkan_deep_gsr", "fast_multkan_deep_gsr", "multkan_deep_gmp",
-        "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "pysr", "operon",
+        "srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "sindy_unconstrained", "parfam", "eql", "pysr", "operon",
     }
     paper = x.get("paper_pipeline", pd.Series(np.nan, index=idx)).notna() | model_name.isin(symbolic_multkan_names)
     rulekan = model_name.str.startswith("rulekan") | model_name.str.startswith("power_rulekan")
@@ -648,8 +697,19 @@ def _write_statistical_rank_pdf(ranks: pd.DataFrame, pairwise: pd.DataFrame, pat
     plt.close(fig)
 
 
-def _write_statistical_outputs(completed: pd.DataFrame, run_dir: Path, fig_dir: Path) -> None:
-    """Write inferential comparisons without treating the three seeds as independent tasks."""
+def _write_statistical_outputs(
+    completed: pd.DataFrame, run_dir: Path, fig_dir: Path,
+    *, main_models: Sequence[str] | None = None,
+) -> None:
+    """Write task-level inference for the configured main comparison only.
+
+    Descriptive aggregate files may contain additional experiments, but mean
+    ranks and pairwise/Friedman tests are restricted to ``main_models``.
+    """
+    stats_completed = completed
+    if main_models is not None and "model" in completed.columns:
+        allowed = {str(m) for m in main_models}
+        stats_completed = completed[completed["model"].astype(str).isin(allowed)].copy()
     specs = [
         ("final_nrmse", "Final predictive NRMSE"),
         ("symbolic_nrmse", "Fully symbolic NRMSE"),
@@ -658,9 +718,14 @@ def _write_statistical_outputs(completed: pd.DataFrame, run_dir: Path, fig_dir: 
         "# Statistical comparison of benchmark methods\n",
         "Seeds are collapsed to a median within each task before inference, so the benchmark task—not each seed—is the statistical unit. Pairwise comparisons use two-sided Wilcoxon signed-rank tests on log10 NRMSE across matched tasks with Holm family-wise correction. The omnibus comparison uses a Friedman test on the common-task panel of methods with at least 75% of the maximum task coverage.\n",
     ]
+    if main_models is not None:
+        sections.append(
+            "The inferential panel is restricted to the profile's explicit `main_comparison_models` list; extra run records (including ablations and appendix-only variants) are excluded from ranks and tests.\n"
+        )
+        (run_dir / "statistical_model_set.txt").write_text("\n".join(str(m) for m in main_models) + "\n")
     wrote = False
     for metric, label in specs:
-        task_level, block_cols = _task_level_metric(completed, metric, regression_only=True)
+        task_level, block_cols = _task_level_metric(stats_completed, metric, regression_only=True)
         if task_level.empty:
             continue
         prefix = "statistical_" + metric
@@ -1289,7 +1354,7 @@ def _formula_is_standardized_space(model: str, row=None) -> bool:
         if tag in {"standardized", "normalized", "zscore", "z_score"}:
             return True
     m = str(model or "").lower()
-    if m in {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "pysr", "operon", "autosym", "fastkan_autosym", "gsr", "fastkan_gsr", "gmp"}:
+    if m in {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "sindy_unconstrained", "parfam", "eql", "pysr", "operon", "autosym", "fastkan_autosym", "gsr", "fastkan_gsr", "gmp"}:
         return True
     if m.startswith("multkan_deep_") or m.startswith("fast_multkan_deep_"):
         return True
@@ -1607,6 +1672,12 @@ def _formula_structural_rules(
     expr,xs=_sympy_formula(formula,int(spec.n_var or 0))
     if expr is None:
         return None
+    # Cheap complexity guard before raw-coordinate substitution/canonicalizing.
+    # Dense SINDy and EQL expressions can contain hundreds or thousands of
+    # outer DNF terms.  They are outside the deliberately bounded structural
+    # parser and should fail fast to zero recovery, not spend minutes in SymPy.
+    if _bounded_dnf(expr, xs, max_terms=max_terms) is None:
+        return None
     if str(formula_input_space).lower() in {"standardized", "normalized", "zscore", "z_score"}:
         expr = _formula_to_raw_coordinates(expr, xs, input_mean, input_std)
     expr = _canonicalize_fuzzy_formula(expr, xs, spec, max_terms=max_terms)
@@ -1646,6 +1717,34 @@ def _formula_rule_matches(expected_rule, learned_rule) -> bool:
     return _max_boolean_matching_local(matrix) == len(exp)
 
 
+def _zero_fuzzy_formula_scores(spec) -> dict[str, float]:
+    """Conservative structural score for a fuzzy formula that cannot be scored.
+
+    The benchmark protocol treats failed/unscorable structural evaluations as
+    zero recovery rather than missing data.  Returning a complete numeric row
+    prevents hard formulas (for example very large SINDy dictionaries or EQL
+    expressions that exceed the bounded DNF budget) from disappearing from
+    figures and denominators.
+    """
+    expected = list(getattr(spec, "fuzzy_rules", ()) or ())
+    n_rules = len(expected)
+    return {
+        "fuzzy_expected_rules": float(n_rules),
+        "fuzzy_found_rules": 0.0,
+        "fuzzy_rule_precision": 0.0,
+        "fuzzy_rule_recall": 0.0,
+        "fuzzy_rule_f1": 0.0,
+        "fuzzy_gate_precision": 0.0,
+        "fuzzy_gate_recall": 0.0,
+        "fuzzy_branch_precision": 0.0,
+        "fuzzy_branch_recall": 0.0,
+        "fuzzy_exact_structure_recovery": 0.0,
+        "fuzzy_rule_count_error": float(-n_rules),
+        "fuzzy_rule_count_abs_error": float(n_rules),
+        "fuzzy_formula_semantic_backfill": 0.0,
+    }
+
+
 def fuzzy_formula_recovery_scores(
     formula: str, task_name: str, *, input_mean=None, input_std=None,
     formula_input_space: str = "raw",
@@ -1665,7 +1764,11 @@ def fuzzy_formula_recovery_scores(
         formula_input_space=formula_input_space,
     )
     if learned is None:
-        return {}
+        # A parse/DNF-budget failure is a failed structural recovery, not a
+        # missing observation.  In particular, large fixed-dictionary SINDy
+        # formulas and dense EQL expressions can exceed the intentionally
+        # bounded DNF expansion.
+        return _zero_fuzzy_formula_scores(spec)
     expected=list(spec.fuzzy_rules)
     matrix=[[_formula_rule_matches(e,l) for l in learned] for e in expected]
     matched=_max_boolean_matching_local(matrix)
@@ -1694,11 +1797,13 @@ def fuzzy_formula_recovery_scores(
 def _backfill_fuzzy_formula_metrics(df: pd.DataFrame) -> pd.DataFrame:
     """Fill missing fuzzy structural metrics from stored symbolic formulas.
 
-    Existing native RuleKAN metrics always win.  This makes historical SR-KAN,
-    PySR, Operon and MultKAN-extractor result JSONs eligible for the same fuzzy
-    recovery plots without rerunning them.
+    Existing native RuleKAN-family metrics always win.  For external formulas,
+    a successful bounded semantic parse is scored normally.  Missing formulas,
+    failed runs, missing coordinate maps, parse failures, and expressions that
+    exceed the bounded-DNF budget receive explicit zero structural recovery, as
+    required by the benchmark protocol, instead of NaN.
     """
-    if df.empty or "suite" not in df.columns or "formula" not in df.columns:
+    if df.empty or "suite" not in df.columns:
         return df
     x=df.copy()
     fuzzy_mask=x["suite"].astype(str).eq("fuzzy_rules")
@@ -1708,36 +1813,71 @@ def _backfill_fuzzy_formula_metrics(df: pd.DataFrame) -> pd.DataFrame:
         "fuzzy_expected_rules","fuzzy_found_rules","fuzzy_rule_precision","fuzzy_rule_recall","fuzzy_rule_f1",
         "fuzzy_gate_precision","fuzzy_gate_recall","fuzzy_branch_precision","fuzzy_branch_recall",
         "fuzzy_exact_structure_recovery","fuzzy_rule_count_error","fuzzy_rule_count_abs_error",
-        "fuzzy_formula_semantic_backfill",
+        "fuzzy_formula_semantic_backfill","fuzzy_formula_semantic_backfill_failed",
     ]
     for c in metric_names:
         if c not in x.columns:
             x[c]=np.nan
+    if "fuzzy_formula_semantic_backfill_reason" not in x.columns:
+        x["fuzzy_formula_semantic_backfill_reason"] = None
+
+    def assign_scores(idx, scores, *, reason: str | None = None):
+        for k,v in scores.items():
+            if k in x.columns:
+                x.at[idx,k]=v
+        failed = float(scores.get("fuzzy_formula_semantic_backfill", 0.0) < 0.5)
+        x.at[idx,"fuzzy_formula_semantic_backfill_failed"] = failed
+        if reason is not None:
+            x.at[idx,"fuzzy_formula_semantic_backfill_reason"] = reason
+
     for idx,row in x[fuzzy_mask].iterrows():
+        # Native structural metrics (or a prior successful backfill) are already
+        # authoritative and must not be overwritten.
         if pd.notna(row.get("fuzzy_rule_f1")):
-            continue
-        formula=row.get("formula")
-        if not isinstance(formula,str) or not formula.strip():
             continue
         task_name = str(row.get("task", ""))
         spec = TASKS.get(task_name) if isinstance(TASKS, dict) else None
+        if spec is None or not getattr(spec, "fuzzy_rules", ()):
+            continue
+        # ANFIS is reported only as a fuzzy predictive reference.  Its native
+        # rule grammar is not the free-form symbolic grammar scored here, so do
+        # not fabricate zero symbolic-recovery metrics for it.
+        if str(row.get("model", "")).lower() == "anfis":
+            continue
+
+        status = str(row.get("status", "completed") or "completed").lower()
+        # Running jobs are incomplete observations, so leave them missing in a
+        # live partial aggregate.  Terminal non-completions count as failures.
+        if status == "running":
+            continue
+        if status != "completed":
+            assign_scores(idx, _zero_fuzzy_formula_scores(spec), reason=f"run_status:{status}")
+            continue
+
+        formula=row.get("formula")
+        if not isinstance(formula,str) or not formula.strip():
+            assign_scores(idx, _zero_fuzzy_formula_scores(spec), reason="missing_formula")
+            continue
+
         input_mean = input_std = None
         input_space = "raw"
-        if spec is not None and _formula_is_standardized_space(str(row.get("model", "")), row):
+        if _formula_is_standardized_space(str(row.get("model", "")), row):
             input_space = "standardized"
             input_mean, input_std = _row_input_standardization(row, spec)
-            # Without the affine map, scoring standardized coordinates against
-            # raw fuzzy gates is known to be invalid; leave metrics missing.
             if input_mean is None or input_std is None:
+                assign_scores(idx, _zero_fuzzy_formula_scores(spec), reason="missing_input_scaling")
                 continue
+
         scores=fuzzy_formula_recovery_scores(
             formula, task_name, input_mean=input_mean, input_std=input_std,
             formula_input_space=input_space,
         )
-        for k,v in scores.items():
-            if k in x.columns:
-                x.at[idx,k]=v
+        if not scores:
+            scores = _zero_fuzzy_formula_scores(spec)
+        reason = None if float(scores.get("fuzzy_formula_semantic_backfill", 0.0)) >= 0.5 else "unscorable_formula_or_dnf_limit"
+        assign_scores(idx, scores, reason=reason)
     return x
+
 
 def _write_fuzzy_recovery_pdf(symbolic: pd.DataFrame, path: Path) -> None:
     """One task per page with aligned structural-recovery dot plots.
@@ -2407,6 +2547,10 @@ def aggregate(run_dir: Path, quiet: bool = False) -> None:
             if skipped_manifest_count:
                 print(f"[aggregate] incompatible jobs: {run_dir / 'skipped_incompatible_jobs.csv'}")
         return
+    # Structural fuzzy scoring is failure-aware.  Backfill the full run table
+    # before any completed-only predictive filtering so unscorable/failed fuzzy
+    # runs remain explicit zero-recovery observations rather than disappearing.
+    df = _backfill_fuzzy_formula_metrics(df)
     df.to_csv(run_dir / "runs.csv", index=False)
     completed = df[df["status"] == "completed"].copy() if "status" in df else pd.DataFrame()
     if "status" in df:
@@ -2442,11 +2586,25 @@ def aggregate(run_dir: Path, quiet: bool = False) -> None:
                     ["count"], ascending=False
                 ).to_csv(run_dir / "failure_summary.csv", index=False)
 
+    # Use all terminal fuzzy runs for structural recovery.  Predictive summaries
+    # remain completed-only, but a failed/unscorable structural run contributes
+    # zero as specified by the protocol.  Live ``running`` rows are excluded
+    # until they reach a terminal state.
+    if "suite" in df.columns:
+        fuzzy_structural = df[df["suite"].astype(str).eq("fuzzy_rules")].copy()
+        if "status" in fuzzy_structural.columns:
+            fuzzy_structural = fuzzy_structural[~fuzzy_structural["status"].fillna("unknown").astype(str).str.lower().eq("running")]
+        if "fuzzy_rule_f1" in fuzzy_structural.columns:
+            fuzzy_structural = fuzzy_structural[
+                pd.to_numeric(fuzzy_structural["fuzzy_rule_f1"], errors="coerce").notna()
+            ].copy()
+    else:
+        fuzzy_structural = pd.DataFrame()
+
     summary = pd.DataFrame()
     symbolic_summary = pd.DataFrame()
     if not completed.empty:
         completed = _derive_symbolic_metrics(completed)
-        completed = _backfill_fuzzy_formula_metrics(completed)
         metric_cols = [c for c in [
             "test_rmse", "test_nrmse", "test_r2", "test_accuracy", "test_f1", "test_roc_auc",
             "symbolic_rmse", "symbolic_nrmse", "numeric_rmse", "numeric_nrmse", "final_rmse", "final_nrmse",
@@ -2473,7 +2631,10 @@ def aggregate(run_dir: Path, quiet: bool = False) -> None:
         summary=agg.reset_index()
         summary.to_csv(run_dir/"summary.csv",index=False)
 
-        _write_statistical_outputs(completed, run_dir, fig_dir)
+        main_comparison_models = _configured_main_comparison_models(run_dir)
+        _write_statistical_outputs(
+            completed, run_dir, fig_dir, main_models=main_comparison_models
+        )
 
         # Symbolic-only rows: regression tasks with an actual final symbolic model.
         symbolic=completed[
@@ -2539,7 +2700,7 @@ def aggregate(run_dir: Path, quiet: bool = False) -> None:
                 _write_width_sensitivity_pdf(width_summary, fig_dir/"width_sensitivity_rmse.pdf", metric="symbolic_rmse")
                 _write_width_sensitivity_pdf(width_summary, fig_dir/"width_sensitivity_runtime.pdf", metric="symbolic_seconds")
             else:
-                _write_fuzzy_recovery_pdf(symbolic,fig_dir/"fuzzy_rule_recovery.pdf")
+                _write_fuzzy_recovery_pdf(fuzzy_structural,fig_dir/"fuzzy_rule_recovery.pdf")
                 _write_symbolic_error_pdf(symbolic,fig_dir/"symbolic_rmse_by_task.pdf")
                 _write_symbolic_runtime_pdf(symbolic,fig_dir/"symbolic_runtime_by_task.pdf")
                 _write_pareto_pdf(symbolic,fig_dir/"symbolic_accuracy_runtime.pdf")
@@ -2588,7 +2749,7 @@ def aggregate(run_dir: Path, quiet: bool = False) -> None:
                 )
                 _write_fuzzy_predictive_pdf(fps,fig_dir/"fuzzy_predictive_nrmse.pdf")
 
-            fuzzy = symbolic[symbolic["suite"].eq("fuzzy_rules")].copy()
+            fuzzy = fuzzy_structural.copy()
             if not fuzzy.empty:
                 fuzzy.to_csv(run_dir/"fuzzy_runs.csv", index=False)
                 fuzzy_summary = _build_fuzzy_summary(fuzzy)

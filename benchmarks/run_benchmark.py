@@ -146,6 +146,7 @@ OPTIONAL_MODEL_DEPENDENCIES = {
     "rils_rols": ("rils_rols.rils_rols", "rils-rols", True),
     "udsr": ("dso", "git+https://github.com/dso-org/deep-symbolic-optimization-pytorch.git#subdirectory=dso", True),
     "sindy": ("pysindy", "pysindy==2.1.0", True),
+    "sindy_unconstrained": ("pysindy", "pysindy==2.1.0", True),
     "parfam": ("parfam", "parfam==0.0.2", True),
 }
 
@@ -223,7 +224,7 @@ def main() -> int:
         help="PyTorch/BLAS threads per CPU experiment subprocess (default: 1)",
     )
     ap.add_argument(
-        "--aggregate-every", type=int, default=0,
+        "--aggregate-every", type=int, default=200,
         help="refresh aggregate tables/PDFs after N finished jobs; 0 means once per worker-wave",
     )
     ap.add_argument("--edge-policy", default=None,
@@ -234,8 +235,11 @@ def main() -> int:
                     help="override the restricted post-GMP GSR edge order")
     ap.add_argument("--resume", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument(
-        "--reuse-completed", action=argparse.BooleanOptionalAction, default=False,
-        help="with --resume, reuse completed records even when code/configuration changed; opt-in because changes may affect comparability",
+        "--reuse-completed", action=argparse.BooleanOptionalAction, default=True,
+        help=(
+            "with --resume, reuse completed records even when the repository build fingerprint changed "
+            "(default: true). Pass --no-reuse-completed for strict same-build reruns."
+        ),
     )
     ap.add_argument(
         "--verbose-resume", action=argparse.BooleanOptionalAction, default=False,
@@ -256,7 +260,12 @@ def main() -> int:
     cfg = yaml.safe_load(config_path.read_text())
     profile = resolve_profile(cfg, args.profile)
     if args.list:
-        print(json.dumps({"suites": list_suites(), "models": profile.get("models"), "profiles": list(cfg["profiles"])}, indent=2))
+        print(json.dumps({
+            "suites": list_suites(),
+            "models": profile.get("models"),
+            "main_comparison_models": profile.get("main_comparison_models"),
+            "profiles": list(cfg["profiles"]),
+        }, indent=2))
         return 0
 
     try:
@@ -273,10 +282,9 @@ def main() -> int:
         aggregate_every = max(1, workers)
 
     models = _csv_list(args.models) or list(profile.get("models", []))
-    try:
-        _validate_optional_model_dependencies(models)
-    except RuntimeError as exc:
-        ap.error(str(exc))
+    # Optional dependency preflight is intentionally deferred until after the
+    # resume/cache pass.  A fully cached Operon/PySR/etc. result must not become
+    # unusable merely because that optional package is absent or broken today.
     suites = _csv_list(args.suites)
     tasks = _select_tasks(profile, suites, _csv_list(args.tasks))
     seeds = [int(x) for x in (_csv_list(args.seeds) or profile.get("seeds", [0]))]
@@ -394,6 +402,14 @@ def main() -> int:
         aggregate(run_dir)
         print(f"[benchmark] finished. Results: {run_dir}")
         return 0
+
+    # Validate only models that will actually execute.  Cached completed jobs
+    # require no import/runtime dependency and should remain reusable.
+    runnable_models = sorted({item[1][1] for item in runnable})
+    try:
+        _validate_optional_model_dependencies(runnable_models)
+    except RuntimeError as exc:
+        ap.error(str(exc))
 
     print(f"[benchmark] runnable={len(runnable)} resumed={completed_from_resume} aggregate_every={aggregate_every}")
     failures: list[int] = []

@@ -196,7 +196,7 @@ platform
 torch_version
 ```
 
-Resume reuses a completed JSON only when its stored build fingerprint matches the active source/configuration fingerprint. `--reuse-completed` explicitly permits reuse after a source or configuration change. `--verbose-resume` prints per-job resume decisions. `--show-build-fingerprint` prints the build fingerprint that is always retained in the result JSON.
+Resume is enabled by default and completed JSON records are reused even when the active source/configuration fingerprint differs; the fingerprint is retained for provenance and the runner reports changed-build reuse in its compact resume summary. Pass `--no-reuse-completed` for strict same-build reruns. `--verbose-resume` prints per-job resume decisions, and `--show-build-fingerprint` prints the active fingerprint.
 
 A run begins with a `running` JSON. If the parent process or machine stops before terminal status is written, that record remains `running` and is reported as incomplete.
 
@@ -233,9 +233,9 @@ pyoperon==0.6.1
 
 SR-KAN is installed from the authors' GitHub repository; `benchmarks/requirements-srkan.txt` provides the narrow SR-KAN-only install. The unrelated PyPI package named `srkan` does not provide the API expected by the benchmark adapter.
 
-Selected external baselines are checked before job construction. Operon is import-tested through `pyoperon.sklearn`; SR-KAN is checked for the expected `regressor` and `SympyEvaluator` API; PSE is checked through `psrn`; RILS-ROLS is checked through `rils_rols.rils_rols`; uDSR is checked through `dso`; SINDy is checked through `pysindy`; ParFam is checked through `parfam`; PySR installation is checked without importing the Julia bridge during preflight. EQL is implemented in-tree and has no extra runtime dependency beyond PyTorch/SymPy. Operator grammars and compute budgets are profile-controlled.
+Selected external baselines are checked before job construction. Operon is import-tested through `pyoperon.sklearn`; SR-KAN is checked for the expected `regressor` and `SympyEvaluator` API; PSE is checked through `psrn`; RILS-ROLS is checked through `rils_rols.rils_rols`; uDSR is checked through `dso`; SINDy-12 and its appendix unconstrained sensitivity are checked through `pysindy`; ParFam is checked through `parfam`; PySR installation is checked without importing the Julia bridge during preflight. EQL is implemented in-tree and has no extra runtime dependency beyond PyTorch/SymPy. Operator grammars and compute budgets are profile-controlled.
 
-The `research_modern` profile adds Symbolic-KAN, PSE, RILS-ROLS, uDSR, SINDy, ParFam, and EQL to the primary research matrix. PSE, RILS-ROLS, uDSR, PySINDy, and ParFam use their public/official packages directly; EQL is an in-tree PyTorch reproduction of the published architecture and sparsity schedule. Symbolic-KAN uses the authors' `Pub_Symbolic_KANs` source, checked out by `setup.sh` at commit `9481a82`; the adapter calls the upstream regression training routine and supplies the benchmark data without rewriting the optimization, selection, hardening, or LBFGS logic.
+The `research_modern` profile adds Symbolic-KAN, PSE, RILS-ROLS, uDSR, SINDy-12, ParFam, and EQL to the primary research matrix. Unconstrained SINDy is absent from the main comparison model set and is run only by explicitly overriding `--models sindy_unconstrained` for appendix diagnostics. PSE, RILS-ROLS, uDSR, PySINDy, and ParFam use their public/official packages directly; EQL-Div is an in-tree PyTorch reproduction of the published architecture, division curriculum, sparsity schedule, and model-selection criterion; the lambda grid is coarsened to fit the common job budget. Symbolic-KAN uses the authors' `Pub_Symbolic_KANs` source, checked out by `setup.sh` at commit `9481a82`; the adapter calls the upstream regression training routine and supplies the benchmark data without rewriting the optimization, selection, hardening, or LBFGS logic.
 
 ## Commands
 
@@ -271,3 +271,10 @@ python -m benchmarks.run_benchmark \
   --suites fuzzy_rules \
   --run-dir benchmark_results/fuzzy
 ```
+
+
+### SINDy-12 complexity control
+
+The main comparison caps SINDy at 12 active non-bias library terms. This is a symbolic term-budget control, not an assertion that a SINDy term and a KAN hidden unit have identical parameter counts. For every STLSQ threshold candidate, an over-budget support is ranked by empirical RMS contribution (`|coef_j| * rms(feature_j)`), reduced to the 12 strongest non-bias terms, and jointly OLS-refit; validation error is then computed on the capped model. The bias/constant column does not consume one of the 12 terms.
+
+The `sindy_unconstrained` appendix condition uses the identical primitive library, task-specific interaction order, threshold grid, data split, and STLSQ configuration but does not impose the support cap. Its formula term count and serialized character length are logged explicitly so the appendix can show when predictive accuracy is purchased by a very large expansion.

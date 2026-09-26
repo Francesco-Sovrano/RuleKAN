@@ -7,7 +7,8 @@ import pytest
 
 from benchmarks.models import (
     TRAINERS, train_operon, train_pse, train_pysr, train_rils_rols, train_udsr,
-    train_srkan, train_symbolic_kan, train_sindy, train_parfam, train_eql,
+    train_srkan, train_symbolic_kan, train_sindy, train_sindy_unconstrained,
+    train_parfam, train_eql,
 )
 from benchmarks.specs import TASKS, make_synthetic_data
 
@@ -19,7 +20,7 @@ def _tiny_data():
 
 
 def test_evolutionary_symbolic_regressors_are_registered():
-    assert {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "parfam", "eql", "pysr", "operon"}.issubset(TRAINERS)
+    assert {"srkan", "symbolic_kan", "pse", "rils_rols", "udsr", "sindy", "sindy_unconstrained", "parfam", "eql", "pysr", "operon"}.issubset(TRAINERS)
 
 
 def test_pysr_wrapper_uses_benchmark_data_and_reports_formula(monkeypatch):
@@ -302,6 +303,16 @@ def test_udsr_wrapper_enables_poly_and_gp_meld(monkeypatch):
 
 
 
+def test_sindy_static_dictionary_supports_third_order_interactions():
+    from benchmarks.sindy_baseline import static_library
+    x = np.array([[1.0, 2.0, 3.0], [2.0, 3.0, 4.0]])
+    theta, names = static_library(
+        x, ["x0", "x1", "x2"], primitive_library=["x"], max_interaction_order=3
+    )
+    assert theta.shape[0] == 2
+    assert any(name.count("*") == 2 and "x0" in name and "x1" in name and "x2" in name for name in names)
+
+
 def test_sindy_wrapper_uses_pysindy_stlsq_and_exports_sparse_formula(monkeypatch):
     seen = {}
 
@@ -333,10 +344,103 @@ def test_sindy_wrapper_uses_pysindy_stlsq_and_exports_sparse_formula(monkeypatch
     assert run.model_name == "sindy"
     assert run.extras["symbolic_backend"] == "pysindy_stlsq_static_library"
     assert run.extras["sindy_optimizer"] == "STLSQ"
+    assert run.extras["sindy_variant"] == "main_capped_12"
+    assert run.extras["sindy_max_active_terms"] == 12
+    assert run.extras["sindy_active_terms"] <= 12
     assert "x0" in run.extras["formula"]
     assert seen["theta_shape"][0] == 24
     assert seen["thresholds"] == [0.001, 0.01]
     assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
+
+
+
+def test_sindy12_caps_dense_stlsq_support_and_refits(monkeypatch):
+    class DenseSTLSQ:
+        def __init__(self, **kwargs):
+            self.coef_ = None
+            self.intercept_ = 0.0
+
+        def fit(self, theta, y):
+            # Deliberately activate every dictionary column so the adapter must
+            # enforce the main-paper term budget itself.
+            self.coef_ = np.ones((1, theta.shape[1]), dtype=float)
+            return self
+
+    mod = types.ModuleType("pysindy")
+    mod.STLSQ = DenseSTLSQ
+    monkeypatch.setitem(sys.modules, "pysindy", mod)
+
+    # Three variables + x-only primitives through order three gives 20 columns
+    # including the bias, so the unconstrained support has 19 non-bias terms.
+    rng = np.random.default_rng(4)
+    x = rng.normal(size=(40, 3))
+    y = 1.5 * x[:, 0] - 0.7 * x[:, 1] + 0.2 * x[:, 2]
+
+    from benchmarks.sindy_baseline import fit_static_sindy
+    fit, pred = fit_static_sindy(
+        x[:24], y[:24], x[24:32], y[24:32], x[32:],
+        ["x0", "x1", "x2"], primitive_library=["x"],
+        max_interaction_order=3, thresholds=[1e-3], max_active_terms=12,
+    )
+    assert fit.raw_nonzero_terms == 19
+    assert fit.active_terms <= 12
+    assert fit.max_active_terms == 12
+    assert fit.support_capped is True
+    assert np.isfinite(pred).all()
+
+
+def test_unconstrained_sindy_preserves_dense_support(monkeypatch):
+    class DenseSTLSQ:
+        def __init__(self, **kwargs):
+            self.coef_ = None
+            self.intercept_ = 0.0
+
+        def fit(self, theta, y):
+            self.coef_ = np.ones((1, theta.shape[1]), dtype=float)
+            return self
+
+    mod = types.ModuleType("pysindy")
+    mod.STLSQ = DenseSTLSQ
+    monkeypatch.setitem(sys.modules, "pysindy", mod)
+
+    from benchmarks.sindy_baseline import fit_static_sindy
+    rng = np.random.default_rng(5)
+    x = rng.normal(size=(40, 3))
+    y = x[:, 0] + x[:, 1]
+    fit, _ = fit_static_sindy(
+        x[:24], y[:24], x[24:32], y[24:32], x[32:],
+        ["x0", "x1", "x2"], primitive_library=["x"],
+        max_interaction_order=3, thresholds=[1e-3], max_active_terms=None,
+    )
+    assert fit.raw_nonzero_terms == 19
+    assert fit.active_terms == 19
+    assert fit.max_active_terms is None
+    assert fit.support_capped is False
+
+
+def test_unconstrained_sindy_model_is_appendix_variant(monkeypatch):
+    class SparseSTLSQ:
+        def __init__(self, **kwargs):
+            self.coef_ = None
+            self.intercept_ = 0.0
+        def fit(self, theta, y):
+            coef = np.zeros(theta.shape[1], dtype=float)
+            coef[1] = 1.0
+            self.coef_ = coef.reshape(1, -1)
+            return self
+
+    mod = types.ModuleType("pysindy")
+    mod.STLSQ = SparseSTLSQ
+    monkeypatch.setitem(sys.modules, "pysindy", mod)
+    spec, data = _tiny_data()
+    run = train_sindy_unconstrained(
+        spec, data, 5,
+        {"primitive_library": ["x"], "max_interaction_order": 1, "thresholds": [0.001]},
+    )
+    assert run.model_name == "sindy_unconstrained"
+    assert run.extras["sindy_variant"] == "appendix_unconstrained"
+    assert run.extras["sindy_max_active_terms"] is None
+    assert run.extras["sindy_formula_characters"] == len(run.extras["formula"])
 
 
 def test_parfam_wrapper_uses_official_public_api(monkeypatch):
@@ -377,13 +481,17 @@ def test_eql_reproduction_trains_and_exports_formula():
     spec, data = _tiny_data()
     run = train_eql(
         spec, data, 3,
-        {"device": "cpu", "hidden_width": 4, "n_hidden_layers": 1,
-         "unary_library": ["x", "sin"], "n_binary": 1,
-         "epochs": 6, "phase1_frac": 0.33, "phase2_frac": 0.66,
-         "lr": 1e-3, "l1_lambda": 1e-5, "prune_threshold": 1e-6},
+        {"device": "cpu", "unary_library": ["x", "sin", "cos"],
+         "units_per_type": 1, "n_binary": 1, "total_layers": [2],
+         "l1_lambdas": [1e-5], "steps_per_hidden_layer": 8,
+         "phase1_frac": 0.25, "phase2_frac": 0.75, "penalty_every": 0,
+         "batch_size": 8, "lr": 1e-3, "prune_threshold": 1e-6},
     )
     assert run.model_name == "eql"
-    assert run.extras["symbolic_backend"] == "eql_pytorch_reproduction"
+    assert run.extras["symbolic_backend"] == "eql_div_pytorch_reproduction"
     assert run.extras["eql_official_source_executed"] is False
+    assert run.extras["eql_selected_total_layers"] == 2
+    assert run.extras["eql_candidate_total_layers"] == [2]
     assert isinstance(run.extras["formula"], str) and run.extras["formula"]
+    assert "/" in run.extras["formula"]
     assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics

@@ -230,7 +230,7 @@ python -m benchmarks.aggregate --run-dir benchmark_results/current
 
 ## Resume and reuse
 
-The benchmark runner writes a source/configuration build fingerprint into each condition record. With the default `--resume`, a completed record is reused only when its stored fingerprint matches the active build.
+The benchmark runner writes a source/configuration build fingerprint into each condition record. With the default `--resume`, completed records are reused even when that fingerprint differs from the active build; the mismatch is reported for provenance.
 
 Relevant options are:
 
@@ -241,10 +241,10 @@ Relevant options are:
 --show-build-fingerprint / --no-show-build-fingerprint
 ```
 
-Use `--reuse-completed` when completed records should remain reusable even if the active source/configuration fingerprint differs:
+Use `--no-reuse-completed` when a deliberate method/configuration change should force strict same-build reruns:
 
 ```bash
-./run_rulekan_benchmark.sh research --reuse-completed
+./run_rulekan_benchmark.sh research --no-reuse-completed
 ```
 
 Missing, failed, or otherwise non-reusable conditions can still be scheduled. `--no-resume` forces the selected matrix to execute again.
