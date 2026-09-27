@@ -44,7 +44,7 @@ SumProductKAN(
 )
 ```
 
-Important methods:
+Methods:
 
 ```text
 forward(x, return_details=False)

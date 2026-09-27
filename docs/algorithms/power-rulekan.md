@@ -1,4 +1,4 @@
-# PowerRuleKAN
+# Stage 3: PowerRuleKAN
 
 ## Model
 

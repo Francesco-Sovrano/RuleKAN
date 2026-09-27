@@ -1,21 +1,21 @@
-# Symbolic search
+# Stage 2: symbolic sum-product search
 
-## Pipeline
+## Procedure
 
-The benchmark RuleKAN symbolic path is:
+The RuleKAN Stage-2 path is:
 
-1. form distinct numerical support classes from pre-pruning evidence plus final active supports;
-2. expand each support into all admissible repeated-variable multiplicities through `q`;
+1. form the primary support bank from retained Stage-1 numerical terms;
+2. expand each support into admissible repeated-variable multisets through `q`;
 3. run symbolic-operator GMP inside those structures;
-4. generate additional hard exact-operator proposals;
-5. score candidate rules in context against the target or current residual;
-6. commit rules by validation-aware matching pursuit/GSR;
-7. backfit committed rules and continuously refit symbolic affine parameters;
-8. remove negligible/redundant rules within configured validation budgets;
-9. optionally apply affine-partition refactoring;
-10. optionally run a higher-recall numerical-support rescue when the primary symbolic model underfits validation data.
+4. generate hard exact-operator proposals;
+5. score complete candidate terms against the target or current residual;
+6. commit terms by validation-aware matching pursuit/GSR or the configured OMP policy;
+7. backfit committed terms and continuously refit affine parameters and amplitudes;
+8. remove negligible or redundant terms under validation budgets;
+9. apply configured affine-partition refactoring;
+10. when triggered, test bounded support augmentation derived from Stage-1 evidence.
 
-At every RuleKAN structural stage, candidate supports are checked against numerically learned support classes.
+Primary RuleKAN structures use retained supports. Support augmentation may add nonempty subsets, selected pre-pruning supports, or gate-aware unions derived from Stage-1 evidence. It does not enumerate arbitrary missing supports. RuleSISP instead enumerates the complete variable-multiset grammar through `q`.
 
 ## Symbolic factor parameterization
 
@@ -33,7 +33,7 @@ Each operator has deterministic hard affine seeds supplied by `_hard_affine_seed
 
 ### Data-unit affine starts
 
-Inputs in the benchmark are standardized. A useful symbolic chart may be simple in the original sampled coordinate but shifted/scaled in standardized coordinates. `_data_unit_affine_seed_grid` therefore maps operator seeds through the observed training range.
+Inputs in the benchmark are standardized. A symbolic chart may be simple in the original sampled coordinate but shifted or scaled in standardized coordinates. `_data_unit_affine_seed_grid` therefore maps operator seeds through the observed training range.
 
 If
 
@@ -48,7 +48,7 @@ and an operator seed is `g(beta*u+gamma)`, its equivalent chart on standardized 
 \gamma'=\gamma-\frac{\beta z_{\min}}{z_{\max}-z_{\min}}.
 \]
 
-Raw and data-unit starts are both retained. This is important for same-variable factorization and affine membership/complement gates.
+Raw and data-unit starts are both retained. This supports same-variable factorization and affine membership/complement gates.
 
 ## GMP operator preselection
 
@@ -70,7 +70,7 @@ GMP supports a `data_dual` identity chart. It uses multiple latent parameterizat
 
 ## Hard exact-operator proposals
 
-Soft GMP can suppress a useful operator before hard refitting. `hard_symbolic_tuple_screening` supplies a complementary path: it evaluates exact symbolic atoms from deterministic affine starts and builds hard product tuples with a beam search. At the first factor it retains operator diversity when the beam permits, then limits combinatorics at deeper product order.
+Soft GMP can suppress a candidate operator before hard refitting. `hard_symbolic_tuple_screening` supplies a complementary path: it evaluates exact symbolic atoms from deterministic affine starts and builds hard product tuples with a beam search. At the first factor it retains operator diversity when the beam permits, then limits combinatorics at deeper product order.
 
 The optional hybrid hard screen and hard-proposal union combine these candidates with GMP proposals rather than replacing GMP.
 
@@ -92,7 +92,7 @@ This avoids treating the best local operator on an isolated edge as necessarily 
 
 `learned_support_symbolic_gsr` requires an explicit `structure_candidates` bank. It computes or receives the allowed numerical support classes and rejects every candidate structure `z` whose distinct-variable set is absent from that set.
 
-It also passes the same allowed-support contract to the affine-partition rescue. This automatic aliasing makes the support restriction a property of the entry point rather than an option each downstream caller must remember to configure.
+It passes the same allowed-support set to affine-partition and downstream support-conditioned procedures.
 
 ## SISP
 
@@ -104,13 +104,13 @@ For `d` variables and maximum order `q`, SISP considers
 \binom{d+q}{q}-1
 \]
 
-variable multisets before operator tuples are considered. This makes SISP a useful control for separating the value of learned numerical structure from the value of the symbolic optimizer.
+variable multisets before operator tuples are considered. SISP therefore isolates the effect of Stage-1 support conditioning while retaining the same Stage-2 factor language.
 
 ## Adaptive high-recall support rescue
 
 The `rulekan_adaptive` benchmark model first runs the same primary learned-support path as RuleKAN. A second structure-conditioned search is considered only when the primary symbolic validation error crosses the configured rescue criteria relative to the numerical precursor or an absolute force threshold.
 
-The rescue recomputes support classes from the high-recall evidence captured before numerical pruning and constructs their multiplicity closure. It can therefore restore a support that numerical pruning removed, but it cannot introduce a variable combination absent from the numerical evidence.
+The rescue recomputes support classes from high-recall evidence captured before numerical pruning and constructs their multiplicity closure. Additional bounded support proposals may include nonempty subsets or gate-aware unions when the corresponding Stage-1 evidence satisfies the configured construction rules. Arbitrary support enumeration remains disabled.
 
 The rescue uses a larger symbolic search budget. It replaces the primary symbolic model only when validation MSE improves by the configured relative margin. If selected, its support bank becomes the canonical `symbolic_effective_support_*` payload used by downstream PowerRuleKAN searches.
 

@@ -1,4 +1,4 @@
-# Depth-2 composition rescue
+# Stage 3: bounded composition
 
 Flat RuleKAN represents a sum of products of univariate symbolic factors,
 
@@ -37,7 +37,7 @@ A coarse screen ranks discrete outer/inner operator families. The refinement bea
 - low-complexity two-variable product families;
 - low-complexity sums of unary factors such as `sin(x0)+cos(x1)` and `x0^2+x1^2`.
 
-This mirrors two useful properties of expression-tree symbolic regression: recursive unary composition and a parsimony bias that keeps simple families alive long enough for continuous constants to reach the correct basin. The same delayed-family-pruning principle is used by the affine-partition rescue.
+The beam preserves recursive unary families and low-complexity inner structures during continuous refinement. Affine-partition search uses the same delayed family-pruning scheme.
 
 Each retained family receives Adam refinement followed by LBFGS polishing of continuous affine parameters, inner coefficients, and outer scale/bias. A smaller validation-selected set receives a deeper polish.
 
@@ -55,7 +55,7 @@ For the strongest composition candidates, the rescue can fit one additional flat
 
 The incumbent is replaced only when the composed candidate improves validation MSE by at least `symbolic_composition_min_improvement_rel`. Test coordinates and labels do not participate in candidate construction or selection.
 
-Because the ordinary model remains the incumbent, enabling this rescue does not reduce validation accuracy by construction. It does increase search time on cases that trigger it.
+The flat model remains available during validation selection. Composition screening and refinement add compute only on cases that cross the trigger.
 
 ## Relation to KAN depth
 
@@ -64,4 +64,4 @@ Widening a KAN/MultKAN layer increases the number of units but does not add comp
 
 ## PowerRuleKAN-Comp
 
-`PowerRuleKAN-Comp` applies the same rescue inside the powered search rather than only to the final `p=1` fallback. The ordinary RuleKAN base, transformed-target bases, and ratio numerator/denominator bases may each become a `ComposedRuleKAN` when validation improves. Integer-power and ratio polishing then optimizes only continuous parameters of the already fixed symbolic topology. The support license is unchanged; composition does not authorize a new distinct-variable support.
+`PowerRuleKAN-Comp` applies the same rescue inside the powered search rather than only to the final `p=1` fallback. The ordinary RuleKAN base, transformed-target bases, and ratio numerator/denominator bases may each become a `ComposedRuleKAN` when validation improves. Integer-power and ratio polishing then optimizes only continuous parameters of the already fixed symbolic topology. Composition uses the selected effective support bank and does not perform unrestricted support enumeration.

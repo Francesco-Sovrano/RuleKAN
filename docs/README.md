@@ -1,160 +1,166 @@
-# RuleKAN documentation
+# RuleKAN: Addressing the Symbolic Expressivity Gap in KANs for Symbolic Regression
 
-## Overview
+RuleKAN separates the discovery of variable interactions from the symbolic factorization of those interactions. The separation is required because a flexible one-dimensional KAN edge can absorb symbolic structure that is not recoverable by replacing that edge with one primitive. Typical cases include several analytic factors of the same input, cross-variable interactions, fuzzy gate-and-branch decompositions, operators applied to a complete expression, and nested analytic composition.
 
-RuleKAN learns symbolic models in two stages:
+Two related symbolic searches are implemented. **RuleKAN** conditions its candidate structures on variable supports learned by a KAN-derived numerical model. **RuleSISP** (Structure-Independent Symbolic Pursuit) uses the same sum-product symbolic language but enumerates all variable multisets through a bounded factor order. Signed integer powers and one additional composition level provide bounded extensions for expression scope and depth.
 
-1. a numerical sum-product network discovers sparse variable supports and interaction structure;
-2. a symbolic search replaces the numerical factors with analytic functions while remaining inside the variable supports evidenced by the numerical stage.
+## Symbolic model
 
-For an input vector \(x=(x_1,\ldots,x_d)\), a symbolic RuleKAN model is
-
-\[
-\hat y(x)=b+\sum_{r=1}^{R} a_r\prod_{j=1}^{m_r} g_{rj}(x_{v_{rj}}),
-\]
-
-where \(b\) is a global bias, \(a_r\) is a rule amplitude, and each \(g_{rj}\) is a univariate symbolic factor with a fitted affine input chart. A rule may contain several factors, including repeated uses of the same input variable when symbolic multiplicity expansion is enabled.
-
-The numerical precursor uses the same sum-product structure with trainable one-dimensional edge functions. Gates control whether rules and factors remain active. Numerical pruning, validation-based refitting, and pre-pruning support capture produce the structural evidence used by the symbolic stage.
-
-## Relation to KAN
-
-A Kolmogorov-Arnold Network (KAN) represents transformations with learnable univariate functions on edges. MultKAN variants can also contain multiplication nodes. RuleKAN does not define its contribution as adding multiplication to KAN. It changes the unit of structural discovery and symbolic extraction.
-
-| KAN / MultKAN symbolic pipeline | RuleKAN |
-|---|---|
-| Univariate edges are the primary learned symbolic units. | Complete product rules are the primary structural units. |
-| Multiplication may be present as network nodes. | Multiplicative rule structure is explicit in a sparse sum-of-products bank. |
-| Edge pruning determines local connectivity. | Rule and factor gates are pruned with validation-aware structural refitting. |
-| Symbolic replacement is performed on individual learned functions or edges. | Symbolic candidates are complete products evaluated in the context of the current additive model. |
-| A numerical edge corresponds to one numerical univariate function. | A numerical support may expand to repeated symbolic factors of the same variable. |
-| Network topology determines available interactions. | Learned variable supports define the admissible symbolic grammar. |
-
-RuleKAN adds the following mechanisms on top of the KAN edge-function substrate:
-
-- **sum-product rule bank:** sparse additive rules containing multiplicative univariate factors;
-- **differentiable rule and factor gates:** continuous structural optimization before hardening;
-- **pre-pruning support evidence:** high-recall variable-support information retained before destructive pruning;
-- **support collapse:** numerical rules are converted to distinct-variable support classes;
-- **multiplicity expansion:** symbolic search may use a variable more than once within an evidenced support;
-- **support-rank expansion:** several additive symbolic rules may share the same support;
-- **GMP operator proposals:** gated matching-pursuit screening proposes symbolic factor families;
-- **hard symbolic proposals and learned-support GSR:** complete symbolic rules are evaluated and committed using validation data;
-- **symbolic backfitting and cleanup:** continuous parameters of committed rules are jointly refined;
-- **validation-gated support rescue:** `RuleKAN Adaptive` may restore supports captured before numerical pruning;
-- **depth-2 symbolic composition rescue:** `RuleKAN-Comp` may replace a flat symbolic base with one licensed composition when validation improves;
-- **outer integer-power grammar:** `PowerRuleKAN` applies positive or negative integer powers to complete symbolic RuleKAN bases.
-
-The symbolic support restriction is the central contract: symbolic search may change operator identity, factor multiplicity, and additive rank inside an evidenced support, but ordinary RuleKAN does not introduce a new distinct-variable support that was absent from the numerical evidence.
-
-## End-to-end procedure
-
-### Numerical support discovery
-
-`SumProductKAN` trains an overcomplete bank of rules. Each rule has factor slots, variable-selection gates, and spline or Gaussian-RBF univariate functions. Training uses staged regularization, structural hardening, optional iterative pruning, and validation-based checkpointing.
-
-Before pruning, RuleKAN records high-recall support evidence. After pruning and hardening, the active numerical rules define the primary support classes.
-
-### Symbolic grammar construction
-
-Numerical rules are collapsed to supports containing distinct variable indices. Symbolic grammar construction may then expand each support in two ways:
-
-- **multiplicity:** repeated occurrences of a variable, such as support `{x0}` producing factors on `(x0,x0)`;
-- **rank:** more than one additive symbolic rule assigned to the same support.
-
-This separation is required because a single numerical univariate function can approximate a product of several analytic functions of the same variable.
-
-### Symbolic proposal and pursuit
-
-Each symbolic factor has the form
+For inputs \(x=(x_1,\ldots,x_d)\), the Stage-2 symbolic language is
 
 \[
-g(\beta x+\gamma),
+f_{\mathrm{SP}}(x)=b+\sum_{r=1}^{R}a_r
+\prod_{s=1}^{m_r}\psi_{k_{rs}}(\beta_{rs}x_{j_{rs}}+\gamma_{rs}),
+\qquad m_r\le q.
 \]
 
-with a discrete operator family \(g\) and fitted affine parameters \(\beta,\gamma\). The configured symbolic library supplies the operator families.
+`b` is the global bias, `a_r` is the amplitude of additive term `r`, `m_r` is its number of factors, `j_rs` selects an input variable, and `psi_k` is a discrete analytic primitive. The affine chart `(beta, gamma)` is fitted continuously.
 
-GMP screens operator combinations. Hard exact-operator proposals, learned-support greedy symbolic regression, and optional OMP variants evaluate complete rule candidates against the current residual. Continuous rule scales and affine parameters are refit after candidate selection. Validation error controls selection and cleanup.
+A variable may occur several times in the same product. For example, a numerical Stage-1 edge may approximate \(h(x)\approx e^{-0.7x}\sin(2.4x)\), while Stage 2 receives only support `{x}` and can recover the two factors separately. Several additive symbolic terms may also use the same support.
 
-### Optional structural extensions
+A two-branch fuzzy rule
 
-`RuleKAN Adaptive` uses pre-pruning support evidence when the primary support bank underfits validation data. `RuleKAN-Comp` adds one depth-2 symbolic composition under a validation gate. Affine-partition recovery refactors compatible rules into complementary gates for fuzzy conditional structure. `PowerRuleKAN` adds integer powers, reciprocals, and ratios of complete support-conditioned symbolic bases.
+\[
+(1-g)u+gv
+\]
 
-## Model families
+already belongs to the sum-product language. Complementary gate parameterization, joint refitting, and bounded partition rescue retain explicit gate and branch roles when selected by validation.
 
-| Model | Structural source | Symbolic class |
+## Three-stage procedure
+
+### Stage 1 - variable interaction discovery
+
+The numerical model is a sum of product terms
+
+\[
+f_{\mathrm{num}}(x)=b+\sum_{r=1}^{W}\rho_r a_r
+\prod_{s=1}^{q}\left[1-m_{rs}+m_{rs}h_{rs}(x_{j_{rs}})\right],
+\]
+
+where `h_rs` is a learned spline or Gaussian-RBF univariate function, `rho_r` retains or removes a complete numerical term, and `m_rs` retains or removes one factor slot. Training uses relaxed gates followed by hardening, refitting, and iterative pruning.
+
+The primary output of Stage 1 is a support bank containing the distinct variables used by retained numerical terms. Numerical edge shapes are not copied into the symbolic model. High-recall pre-pruning evidence is retained for validation-gated support augmentation.
+
+### Stage 2 - sum-product factorization
+
+For each support, RuleKAN enumerates admissible variable multisets through order `q`. A support `{x,y}` with `q=3`, for example, permits `(x,y)`, `(x,x,y)`, and `(x,y,y)`. This repeated-variable expansion separates numerical interaction discovery from symbolic factor count.
+
+Operator choice is handled by relaxed GMP screening followed by hard operator selection and continuous refitting. Complete candidate terms are evaluated in the current additive context using GSR-style matching pursuit or configured OMP variants. Additive-term expansion permits several symbolic terms with the same variable multiset.
+
+RuleSISP skips Stage-1 support conditioning and enumerates every variable multiset through order `q`:
+
+\[
+|\mathcal G_S|=\binom{d+q}{q}-1.
+\]
+
+RuleKAN restricts the primary grammar to learned support classes and therefore reduces the structure search before analytic primitives are assigned.
+
+### Stage 3 - complete-expression operators
+
+`PowerRuleKAN` searches
+
+\[
+f(x)=b+\sum_{r=1}^{R_o}a_r\prod_t B_{rt}(x)^{p_{rt}},
+\qquad p_{rt}\in D\subset\mathbb Z\setminus\{0\},
+\]
+
+where each `B_rt` is a complete Stage-2 symbolic base. Negative powers represent reciprocals and ratios; positive powers compactly represent whole-expression powers under bounded term and factor limits.
+
+Composition variants permit one additional analytic function around selected bounded bases,
+
+\[
+C(x)=a\,g(\beta B(x)+\gamma)+d.
+\]
+
+This covers structures such as `sin(1 + x*y)` or `exp(x*y)` without unrestricted recursive tree search.
+
+## Expressivity boundaries
+
+The method separates four distinct constraints:
+
+| Constraint | Failure mode | Mechanism |
 |---|---|---|
-| `rulekan` | learned numerical supports | sums of products of univariate symbolic factors |
-| `rulekan_fast` | learned supports from Gaussian-RBF numerical edges | same as `rulekan` |
-| `rulekan_adaptive` | learned supports plus validation-selected pre-pruning support rescue | same as `rulekan` |
-| `rulekan_comp` | learned supports | RuleKAN plus one validation-gated depth-2 composition |
-| `sisp` | complete variable-multiset grammar | same flat symbolic factor language without learned-support restriction |
-| `sisp_comp` | complete variable-multiset grammar | SISP plus depth-2 composition rescue |
-| `power_rulekan` | canonical effective RuleKAN supports | integer powers and ratios of complete RuleKAN bases |
-| `power_rulekan_comp` | canonical effective RuleKAN supports | powered/ratio grammar with composed symbolic bases allowed |
+| factorization | one learned univariate edge absorbs several analytic factors | repeated-variable Stage-2 factor search |
+| interaction coverage | Stage 1 does not retain a required variable support | RuleSISP or validation-gated support augmentation |
+| scope | an operator must act on a complete multivariate expression | signed integer powers and ratios |
+| depth | a recovered expression must become the input to another analytic function | one bounded composition level |
 
-## Benchmark configuration
+Predictive error and structural recovery are separate quantities. The fuzzy benchmark therefore scores NRMSE and explicit gate/branch recovery independently.
 
-`benchmarks/configs/default.yaml` is the executable benchmark definition. The principal `research` profile has:
+## Model identifiers
 
-- seeds `0,1,2`;
-- 32 tasks across fuzzy rules, synthetic core, powered-expression stress, nested-expression stress, canonical KAN examples, Feynman-style equations, and two small real datasets;
-- 19 methods;
-- synthetic train/validation/test sizes `1600/400/500`;
-- per-job timeout `2400` seconds;
-- shared numerical width `W=12` and grid `12`;
-- fixed maximum product order `q=3`;
-- the 14-operator `target_core` symbolic library;
-- a symbolic rule budget at least as large as the shared width.
+| Identifier | Definition |
+|---|---|
+| `rulekan` | spline Stage 1 + support-conditioned Stage 2 |
+| `rulekan_fast` | Gaussian-RBF Stage 1 + support-conditioned Stage 2 |
+| `rulekan_adaptive` | RuleKAN with validation-gated high-recall support augmentation |
+| `rulekan_omp_full` | RuleKAN with OMP-style Stage-2 term selection |
+| `sisp` | support-independent Stage-2 variable-multiset search |
+| `rulekan_comp` | RuleKAN plus one composition level |
+| `sisp_comp` | SISP plus one composition level |
+| `power_rulekan` | signed integer powers, reciprocals, and ratios of RuleKAN bases |
+| `power_rulekan_comp` | PowerRuleKAN with composed bases permitted |
 
-The `ablation` profile extends `research`. Its RuleKAN and RuleKAN-RBF controls therefore use exactly the same numerical, symbolic, data, timeout, and shared-capacity settings as `research`; only the selected models and tasks differ.
+## Controlled analytic benchmark
 
-The `width_sensitivity` profile is a separate sensitivity configuration. It uses the same seeds and data sizes as `research` and sweeps `W={6,8,10,12,16,24}`, but it uses a longer 5400-second timeout and a reduced RuleKAN optimization schedule. Its `W=12` condition is therefore a width-sensitivity condition, not an exact reproduction of the `research` RuleKAN baseline.
+The analytic benchmark contains 30 noise-free tasks over three seeds: 6 product tasks, 7 fuzzy tasks, 4 power/ratio tasks, 5 nested tasks, 3 canonical KAN targets, and 5 physics-style targets. Synthetic splits contain `1600/400/500` train/validation/test observations. Maximum factor order is `q=3`.
+
+The common controlled vocabulary contains ten elementary primitives:
+
+```text
+x, x^2, 1/x, 1/x^2, sqrt, log, exp, sin, cos, tanh
+```
+
+Each primitive acts on an affine argument. Compound shortcuts such as Gaussian or `log(1+x^2)` are not members of this vocabulary. The benchmark therefore tests whether the model class can construct required scope and composition rather than receiving compound target fragments as direct atoms.
+
+The 23 main comparison methods are the nine RuleKAN/RuleSISP variants plus 14 external symbolic-regression or KAN-based baselines. The exact runnable model identifiers and suite selection are given in [Benchmark protocol](benchmarks/protocol.md).
 
 ## Core terminology
 
-| Term | Meaning |
+| Term | Definition |
 |---|---|
-| **rule** | one additive term in the sum-product model |
-| **factor** | one multiplicative univariate term inside a rule |
-| **support** | set of distinct variables used by a rule |
-| **multiplicity** | number of occurrences of each variable inside one symbolic rule |
-| **support rank** | number of independently parameterized additive symbolic rules assigned to one support |
-| **support collapse** | conversion of numerical factor assignments to distinct-variable support classes |
-| **effective support bank** | validation-selected support source used by downstream RuleKAN symbolic procedures |
-| **GMP** | gated matching pursuit used for symbolic operator proposal/screening |
-| **GSR** | greedy symbolic regression used to build complete symbolic rules |
-| **SISP** | structure-independent symbolic pursuit over the complete variable-multiset grammar |
+| **numerical term** | one additive product term in Stage 1 |
+| **symbolic term / rule** | one additive product term in Stage 2 |
+| **factor** | one multiplicative univariate component of a term |
+| **support** | set of distinct input variables used by a term |
+| **variable multiset** | ordered-independent factor-variable pattern that retains repeated occurrences |
+| **multiplicity** | number of occurrences of each input variable in one symbolic term |
+| **support rank** | number of independently parameterized additive symbolic terms using one support or multiset |
+| **support bank** | collection of support classes available to a support-conditioned symbolic search |
+| **effective support bank** | support bank selected after configured validation-gated augmentation |
+| **GMP** | differentiable mixture screening used to shortlist analytic primitives |
+| **GSR** | greedy symbolic regression / matching pursuit over complete symbolic terms |
+| **SISP** | Structure-Independent Symbolic Pursuit over all variable multisets through order `q` |
 
-## Documentation index
+## Reference index
 
-| Topic | Document |
+| Subject | File |
 |---|---|
-| Installation, tests, first benchmark | [Getting started](getting-started.md) |
-| Terminology | [Glossary](glossary.md) |
-| Model equations and representability | [Model class](theory/model-class.md) |
-| Architectural choices and KAN relationship | [Architecture and design](theory/design-rationale.md) |
-| Support identifiability, collapse, multiplicity and rank | [Identifiability and support](theory/identifiability-and-support.md) |
-| Numerical optimization, gates, pruning and support evidence | [Numerical training](algorithms/numerical-training.md) |
-| Symbolic GMP/GSR, proposals, SISP and adaptive rescue | [Symbolic search](algorithms/symbolic-search.md) |
-| Interaction-surface proposals | [Interaction proposals](algorithms/interaction-proposals.md) |
-| Complementary affine partitions | [Affine partitions](algorithms/affine-partitions.md) |
-| Depth-2 symbolic composition | [Composition rescue](algorithms/composition-rescue.md) |
-| Integer powers, reciprocals and ratios | [PowerRuleKAN](algorithms/power-rulekan.md) |
-| Time and space complexity | [Complexity](complexity.md) |
-| Benchmark profiles, data splits and execution | [Benchmark protocol](benchmarks/protocol.md) |
+| Installation, tests, examples, and benchmark execution | [Getting started](getting-started.md) |
+| Model equations and bounded representability | [Model class](theory/model-class.md) |
+| KAN relationship and architectural structure | [RuleKAN architecture](theory/design-rationale.md) |
+| Support identifiability, repeated variables, and rank | [Identifiability and support](theory/identifiability-and-support.md) |
+| Stage-1 numerical fitting, gates, pruning, and support evidence | [Numerical training](algorithms/numerical-training.md) |
+| Stage-2 GMP, hard proposals, GSR/OMP, RuleKAN, and SISP | [Symbolic search](algorithms/symbolic-search.md) |
+| Interaction-surface proposals and block pursuit | [Interaction proposals](algorithms/interaction-proposals.md) |
+| Complementary fuzzy partitions | [Affine partitions](algorithms/affine-partitions.md) |
+| Stage-3 integer powers, reciprocals, and ratios | [PowerRuleKAN](algorithms/power-rulekan.md) |
+| Stage-3 bounded composition | [Composition](algorithms/composition-rescue.md) |
+| Search-space and runtime scaling | [Complexity](complexity.md) |
+| Benchmark task catalogue | [Tasks](benchmarks/tasks.md) |
+| Benchmark methods | [Methods](benchmarks/methods.md) |
+| Splits, shared controls, profiles, execution, and reproducibility | [Protocol](benchmarks/protocol.md) |
+| Predictive and structural metrics | [Metrics and figures](benchmarks/metrics-and-figures.md) |
 | Component and OFAT ablations | [Ablations](benchmarks/ablations.md) |
-| Benchmark methods | [Benchmark methods](benchmarks/methods.md) |
-| Benchmark tasks | [Task catalog](benchmarks/tasks.md) |
-| Metrics and generated outputs | [Metrics and figures](benchmarks/metrics-and-figures.md) |
-| Hardware and parallel execution | [Hardware and parallelism](benchmarks/hardware-and-parallelism.md) |
-| Benchmark configuration | [Configuration reference](reference/configuration.md) |
-| RuleKAN numerical configuration | [Numerical configuration](reference/configuration-numerical.md) |
-| RuleKAN symbolic configuration | [Symbolic configuration](reference/configuration-symbolic.md) |
+| Hardware and process parallelism | [Hardware and parallelism](benchmarks/hardware-and-parallelism.md) |
+| Configuration schema | [Configuration](reference/configuration.md) |
+| Numerical RuleKAN configuration | [Numerical configuration](reference/configuration-numerical.md) |
+| Symbolic-search configuration | [Symbolic configuration](reference/configuration-symbolic.md) |
 | PowerRuleKAN configuration | [Power configuration](reference/configuration-power.md) |
 | Baseline configuration | [Baseline configuration](reference/configuration-baselines.md) |
 | Symbolic operator libraries | [Symbolic library](reference/symbolic-library.md) |
-| Python classes and functions | [Python API](reference/python-api.md) |
-| Repository modules | [Source layout](reference/source-layout.md) |
+| Python API | [Python API](reference/python-api.md) |
+| Source tree | [Source layout](reference/source-layout.md) |
+| Definitions | [Glossary](glossary.md) |
 | Literature context | [Related work](related-work.md) |
-| Bibliographic entries | [References](references.md) |
+| Bibliography | [References](references.md) |

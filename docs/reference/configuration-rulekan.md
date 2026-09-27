@@ -55,7 +55,7 @@ Its shared settings resolve the common benchmark controls to:
 | `symbolic_joint_scale_refit` | `true` |
 | `symbolic_rule_budget_at_least_width` | `true` |
 
-For RuleKAN, shared width sets `n_rules=12`; the fixed maximum product order sets `max_factors_override=3` for every task; `target_core` resolves to the 14-operator library.
+For RuleKAN, shared width sets `n_rules=12`; the fixed maximum product order sets `max_factors_override=3` for every task; `target_core` resolves to the ten-operator `core10` library.
 
 ## Ablation inheritance
 

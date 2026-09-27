@@ -22,7 +22,7 @@ These tasks isolate expression length while remaining inside the configured sear
 | `long_additive_12` | 12 unary `sin/cos/tanh/exp` atoms on distinct variables | 12 | 1 | 12 | 39 | `long_expression_in_class` |
 | `long_product_6` | six sums of two-factor analytic products | 12 | 2 | 6 | 39 | `long_expression_in_class` |
 
-The two targets deliberately have the same primitive tree size but stress different model resources: rule count versus multiplicative factors. They contain no fitted coefficients or nested affine constants, so the measured difficulty is dominated by structural length/search rather than constant estimation.
+The two targets have the same primitive tree size but stress different model resources: rule count versus multiplicative factors. They contain no fitted coefficients or nested affine constants, so the measured difficulty is dominated by structural length/search rather than constant estimation.
 
 ## Powered-expression stress
 
@@ -107,7 +107,7 @@ A gate signature `xj−` denotes the complement orientation `1-x_j`; `xj+` denot
 
 ## Data ranges and sources
 
-Synthetic raw ranges are part of each `TaskSpec`. The most important domain constraints are: powered reciprocal tasks use bounded ranges chosen so their denominators remain safely away from zero; `pykan_singularity` uses positive inputs for logarithms; fuzzy membership variables use `[0,1]`; Feynman-style rational tasks use positive denominator variables. Exact ranges are in `benchmarks/specs.py`.
+Synthetic raw ranges are part of each `TaskSpec`. The principal domain constraints are: powered reciprocal tasks use bounded ranges chosen so their denominators remain safely away from zero; `pykan_singularity` uses positive inputs for logarithms; fuzzy membership variables use `[0,1]`; Feynman-style rational tasks use positive denominator variables. Exact ranges are in `benchmarks/specs.py`.
 
 Real tasks are loaded as follows:
 
@@ -122,6 +122,6 @@ UCI categorical columns are one-hot encoded; rows containing missing values are 
 
 ## Representability labels
 
-`in_class` means the declared target is representable by the flat RuleKAN factor vocabulary and the task product order, assuming the needed operator library is enabled. `expression_power_exact` identifies targets that are exact members of the PowerRuleKAN outer-power grammar. `nested_unary`, `nested_cross`, `nested_factorizable`, `nested_rational`, `mixed` and the fuzzy-specific labels describe controlled departures or structured subfamilies. `unknown` is used for real data without a known generating formula.
+The `representability` field is benchmark metadata rather than a proof of exact membership in the active symbolic vocabulary. `in_class` marks the flat product-structure task family in the registry. Under the controlled `core10` vocabulary, compound factors such as `log(1+x^2)`, `sqrt(1+x^2)`, and `(1+x^2)^-1` are not direct atoms and require the corresponding composition or whole-expression mechanism. `expression_power_exact` identifies targets that are exact members of the PowerRuleKAN outer-power grammar. `nested_unary`, `nested_cross`, `nested_factorizable`, `nested_rational`, `mixed`, and the fuzzy-specific labels identify structured target families. `unknown` is used for real data without a known generating formula.
 
-The representability label is benchmark metadata. It does not participate in RuleKAN or PowerRuleKAN search or validation selection.
+Fuzzy structural signatures are target annotations used by the structural scorer. A family name such as `sqrt1p_sq` denotes the annotated branch form and does not imply that the same compound function is present as a direct `core10` primitive. These metadata fields do not participate in RuleKAN or PowerRuleKAN search or validation selection.

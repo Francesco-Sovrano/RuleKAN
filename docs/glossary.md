@@ -10,19 +10,19 @@
 
 **Branch** — In an affine partition, the symbolic factor or factor product multiplied by one gate orientation.
 
-**Effective support bank** — The validation-selected RuleKAN symbolic structure bank published through `symbolic_effective_support_bank`. It is the structural source of truth for downstream PowerRuleKAN searches.
+**Effective support bank** — The validation-selected RuleKAN structure bank published through `symbolic_effective_support_bank`. It begins from retained Stage-1 supports and may include bounded support augmentation derived from Stage-1 evidence. Downstream support-conditioned searches use this bank.
 
 **Factor** — One univariate symbolic or numerical function inside a multiplicative rule.
 
 **Gate** — Depending on context, either a differentiable numerical structure gate or an identity-family membership factor in an affine partition. Numerical rule/factor gates and fuzzy-style partition gates are different objects.
 
-**GMP** — Gated/Greedy Matching-Pursuit operator preselection. It uses relaxed operator choices to propose a small set of symbolic operator families for hard search.
+**GMP** — Gated Matching Pursuit operator preselection. It uses relaxed operator choices to propose a small set of symbolic operator families for hard search.
 
-**GSR** — Greedy symbolic regression/search used in the repository's matching-pursuit symbolic stage. RuleKAN uses learned-support GSR; some MultKAN benchmark pipelines use their own GSR path.
+**GSR** — Greedy Symbolic Regression used in the matching-pursuit symbolic stage. RuleKAN uses learned-support GSR; some MultKAN benchmark pipelines use their own GSR path.
 
 **Hard proposal** — A candidate whose variable structure and symbolic operator identities are already discrete. Continuous affine parameters and scales may still be refit.
 
-**High-recall support evidence** — Numerical support rows captured before pruning and combined with final active supports so a support removed by numerical redundancy can still be available to a validation-gated symbolic rescue.
+**High-recall support evidence** — Numerical support rows captured before pruning. They can supply validation-gated support augmentation when the primary retained-support search is insufficient.
 
 **Multiplicity** — Repeated occurrences of variables inside one symbolic rule. Support `{0,1}` can have multiplicity tuples `(0,1)`, `(0,0,1)`, `(0,1,1)`, and so on.
 
@@ -36,7 +36,7 @@
 
 **SISP** — Structure-Independent Symbolic Pursuit. It uses the complete variable-multiset grammar rather than RuleKAN's numerically learned support set.
 
-**Support** — The set of distinct input variables appearing in one rule. Multiplicity is intentionally discarded when defining support.
+**Support** — The set of distinct input variables appearing in one rule. Multiplicity is discarded when defining support.
 
 **Support collapse** — Mapping numerical structures with the same distinct-variable set to one support class.
 

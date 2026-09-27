@@ -26,7 +26,7 @@ The leading singular-value energy fraction
 
 is used as a proposal-quality statistic. The interaction path is enabled only when the configured rank-one criterion is satisfied. These shapes rank or propose operators; they do not force the final symbolic expression.
 
-## Why interaction residualization is useful
+## Interaction residualization
 
 For a target
 
@@ -40,7 +40,7 @@ This is complementary to ordinary GMP. GMP is an end-to-end differentiable propo
 
 ## Two-rule initial block pursuit
 
-When several strong interaction supports are present, the search may initialize with two rules jointly instead of committing one rule greedily. Candidate pairs are evaluated with a joint coefficient and bias refit, followed by a small nonlinear continuous polish. The best block can receive an additional consolidation pass before ordinary residual pursuit continues.
+When several interaction supports pass screening, the search may initialize with two rules jointly instead of committing one rule greedily. Candidate pairs are evaluated with a joint coefficient and bias refit, followed by a small nonlinear continuous polish. The best block can receive an additional consolidation pass before ordinary residual pursuit continues.
 
 Joint initialization addresses an additive decomposition problem: one first rule should not have to approximate two separate multiplicative mechanisms merely because the second rule has not yet been selected.
 

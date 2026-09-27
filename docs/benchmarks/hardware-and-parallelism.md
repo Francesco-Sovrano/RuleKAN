@@ -38,9 +38,9 @@ or, for a specific visible device:
 python -m benchmarks.run_benchmark --profile research --device cuda:0
 ```
 
-An explicit CUDA request fails before scheduling jobs when the current PyTorch build cannot see CUDA. GPU execution defaults to one experiment subprocess at a time because concurrent jobs usually contend for the same accelerator memory. `--workers` can override this when the user deliberately manages multiple devices or has enough accelerator memory.
+An explicit CUDA request fails before scheduling jobs when the current PyTorch build cannot see CUDA. GPU execution defaults to one experiment subprocess at a time because concurrent jobs usually contend for the same accelerator memory. `--workers` can override this when the user explicitly manages multiple devices or has enough accelerator memory.
 
-GPU speedups are workload-dependent. Numerical spline/RBF training and large dense tensor operations are the best candidates. Symbolic search contains Python control flow, many small candidate fits, scalar host synchronizations and validation decisions; those sections can be latency-bound and may see little speedup from a GPU.
+GPU speedups are workload-dependent. Numerical spline/RBF training and large dense tensor operations are the most amenable to GPU acceleration. Symbolic search contains Python control flow, many small candidate fits, scalar host synchronizations and validation decisions; those sections can be latency-bound and may see little speedup from a GPU.
 
 ## Apple MPS
 

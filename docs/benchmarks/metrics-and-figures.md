@@ -2,7 +2,13 @@
 
 ## Predictive regression metrics
 
-Regression evaluation reports RMSE and normalized RMSE. The benchmark stores numerical-stage and symbolic-stage values separately where a method has both stages. Aggregate code derives common `numeric_rmse`, `numeric_nrmse`, `symbolic_rmse` and `symbolic_nrmse` columns across method families.
+Regression evaluation reports RMSE and normalized RMSE. For a test target vector `y_test`,
+
+\[
+\mathrm{NRMSE}=\frac{\mathrm{RMSE}}{\operatorname{sd}(y_{\mathrm{test}})}.
+\]
+
+The benchmark stores numerical-stage and symbolic-stage values separately where a method has both stages. Aggregate code derives common `numeric_rmse`, `numeric_nrmse`, `symbolic_rmse`, and `symbolic_nrmse` columns across method families.
 
 For real regression tasks, target standardization is fitted on the training split; reported prediction metrics are computed on the standardized benchmark target representation stored in `BenchmarkData`.
 
@@ -88,9 +94,15 @@ For PowerRuleKAN, `reciprocal_domain_margin` and `reciprocal_domain_margin_train
 
 ## Statistical comparisons
 
-Aggregation writes task-level inferential comparisons for `final_nrmse` and `symbolic_nrmse`. Seeds are first collapsed to the median within each task, so the benchmark task is the statistical unit rather than the individual seed. Pairwise method comparisons use two-sided Wilcoxon signed-rank tests on paired `log10(NRMSE)` values across common tasks, followed by Holm family-wise correction.
+### Thirty-task analytic protocol
 
-The omnibus comparison uses a Friedman test on the common-task panel of methods with at least 75% of the maximum task coverage. The report includes Kendall's W and average task ranks. Generated files include:
+Each task is reduced to the median NRMSE over its three seeds. Predictive comparisons use two-sided Wilcoxon signed-rank tests on paired `log10(NRMSE_A / NRMSE_B)` values across the 30 task medians. Benjamini-Hochberg correction controls the false discovery rate across the 14 comparisons between the selected RuleKAN-family reference method and the external baselines; `q` denotes the adjusted p-value. A task-level win means lower median NRMSE. Mean rank is the arithmetic mean of per-task ranks.
+
+Failed runs, timeouts, and non-finite symbolic outputs remain in this protocol. For each task, a failed predictive run receives NRMSE equal to ten times the largest finite run-level NRMSE observed on that task before the three-seed median is computed. Fuzzy structural failures contribute zero expanded-rule F1 and zero exact-recovery credit. Exact fuzzy recovery is evaluated on the 21 task-seed runs with paired exact McNemar tests and the same Benjamini-Hochberg correction.
+
+### General aggregate diagnostics
+
+`benchmarks.aggregate` produces broader diagnostic inference for `final_nrmse` and `symbolic_nrmse`. It first collapses completed seeds to a median within each task, then performs all-pairs two-sided Wilcoxon signed-rank tests on paired `log10(NRMSE)` values and applies Holm family-wise correction. It also performs a Friedman test on the common-task panel of methods with at least 75% of the maximum task coverage and reports Kendall's W and average ranks. Generated files include:
 
 ```text
 statistical_final_nrmse_task_medians.csv
@@ -106,7 +118,7 @@ figures/statistical_final_nrmse_ranks.pdf
 figures/statistical_symbolic_nrmse_ranks.pdf
 ```
 
-Holm-adjusted significance is reported at `alpha=0.05`; raw and adjusted p-values are both retained. The rank PDFs mark methods that are significantly worse than the best-ranked method on the corresponding pairwise test.
+The general aggregate tables use completed predictive runs and Holm correction; they are diagnostic outputs and do not implement the failure penalty, 14-comparison Benjamini-Hochberg family, or exact-McNemar fuzzy comparison of the 30-task protocol.
 
 ### Coordinate gauge for formula-level fuzzy recovery
 
@@ -115,7 +127,4 @@ exports symbolic expressions in the original feature coordinates by applying the
 inverse input transform during formula construction. External SR engines store
 expressions in the standardized coordinates they were given. Formula-level fuzzy
 recovery therefore first substitutes `z_j = (x_j - mean_j) / std_j` and only then
-performs semantic DNF/gate matching. Historical synthetic runs reconstruct the
-same training-set mean/std deterministically from task, seed, and split sizes.
-This prevents a coordinate-system artifact from being counted as a structural
-rule-recovery failure.
+performs semantic DNF/gate matching. When coordinate maps are absent from a stored synthetic run, the scorer reconstructs the training-set mean and standard deviation deterministically from task, seed, and split sizes. Formula-level structural matching is therefore performed in a common input coordinate system.

@@ -83,7 +83,7 @@ SC-GMP generally instantiates only a subset with `F_R` active factor slots, givi
 T_{RuleKAN,SC}=O(T_gN_sKF_R).
 \]
 
-A wider learned-support rescue approaches the `A_R(q)` term but still excludes variable supports absent from the numerical evidence.
+A wider support rescue approaches the `A_R(q)` term. Bounded nonempty subsets, selected pre-pruning supports, and gate-aware unions may enter the effective bank when derived from Stage-1 evidence; arbitrary support enumeration is reserved for SISP.
 
 ## Hard operator tuples
 

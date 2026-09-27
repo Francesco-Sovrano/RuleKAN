@@ -12,8 +12,7 @@ For the complete supported benchmark setup:
 source .env/bin/activate
 ```
 
-Besides installing Python dependencies, the script reconstructs the gitignored
-third-party source checkouts used by the benchmark. It checks out official
+The script also creates local third-party source checkouts used by selected benchmark baselines. It checks out official
 Symbolic-KAN at commit `9481a82` under `external/Pub_Symbolic_KANs`, clones and
 builds PyOperon under `external/pyoperon`, repairs its macOS runtime search path,
 and installs RILS-ROLS with build isolation disabled.
@@ -28,10 +27,9 @@ python -m pip install -r requirements.txt
 ```
 
 `benchmarks/requirements-benchmark.txt` and
-`benchmarks/requirements-modern-sr.txt` contain the directly pip-installable
-subset only. They intentionally omit RILS-ROLS and PyOperon, which need the
-special handling in `setup.sh`, and Symbolic-KAN, which is a pinned source
-checkout rather than a Python package.
+`benchmarks/requirements-modern-sr.txt` contain directly pip-installable
+dependencies. RILS-ROLS, PyOperon, and the pinned Symbolic-KAN source checkout
+are handled separately by `setup.sh`.
 
 The package named `srkan` on PyPI is not the dependency used by the benchmark.
 To install only the official SR-KAN implementation expected by the adapter:
@@ -40,9 +38,9 @@ To install only the official SR-KAN implementation expected by the adapter:
 python -m pip install -r benchmarks/requirements-srkan.txt
 ```
 
-uDSR/DSO is intentionally not installed into the main Python-3.12 environment:
-its upstream package pins legacy NumPy/Numba versions. Use a separate compatible
-environment if the uDSR baseline is required.
+uDSR/DSO is not installed into the main Python-3.12 environment because its
+upstream dependency constraints require older NumPy/Numba versions. Use a
+separate compatible environment for model identifier `udsr`.
 
 ## Verify the checkout
 
@@ -91,7 +89,7 @@ Examples:
 ./run_rulekan_benchmark.sh width_sensitivity
 ```
 
-`benchmarks/configs/default.yaml` defines the profiles. `research` uses three seeds, 32 tasks, 19 methods, synthetic train/validation/test sizes of `1600/400/500`, per-job timeout `2400` seconds, shared width `12`, grid `12`, and the `target_core` symbolic library.
+`benchmarks/configs/default.yaml` defines the profiles. `research` uses three seeds, 32 tasks, 19 methods, synthetic train/validation/test sizes of `1600/400/500`, per-job timeout `2400` seconds, shared width `12`, grid `12`, maximum factor order `q=3`, and the ten-operator `target_core` / `core10` symbolic library. The 30-task analytic comparison uses the six analytic suites and the 23 `research_modern.main_comparison_models` listed in [Benchmark protocol](benchmarks/protocol.md).
 
 The runner can also be called directly:
 
@@ -206,9 +204,9 @@ skipped_incompatible_jobs.json
 
 Additional files are generated when the selected profile contains fuzzy, ablation, width-sensitivity, library-sensitivity, redundancy, or statistical-comparison data.
 
-## Inspect existing results without running experiments
+## Inspect a completed run
 
-Read the status file:
+For a run directory containing completed or partial records, inspect its status file:
 
 ```bash
 cat benchmark_results/current/STATUS.txt

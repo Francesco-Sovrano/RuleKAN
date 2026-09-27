@@ -18,7 +18,7 @@ The benchmark compares RuleKAN variants with structure-independent symbolic purs
 | `rulekan_graph` | RuleKAN with contribution-correlation/span redundancy controls in the GSR path. |
 | `rulekan_fast_graph` | RuleKAN-RBF counterpart of `rulekan_graph`. |
 
-All RuleKAN-derived symbolic searches are support-conditioned. Repeated-variable multiplicity and symbolic rank may expand inside an evidenced support; a new distinct-variable support is not admissible.
+RuleKAN primary search is support-conditioned. Repeated-variable multiplicity and symbolic rank may expand within a retained support. Configured validation-gated augmentation may additionally use nonempty support subsets, pre-pruning supports, or bounded gate-aware support unions derived from Stage-1 evidence. RuleSISP alone enumerates arbitrary variable multisets through order `q`.
 
 The `research` profile includes `rulekan_comp`, `sisp_comp`, and `power_rulekan_comp` as separate methods alongside their flat counterparts.
 
@@ -80,12 +80,12 @@ These methods use the repository's `MultKAN` implementation and its symbolic-reg
 | `fastkan_autosym` | baseline symbolic regression | Gaussian RBF |
 | `gsr` | greedy symbolic regression | B-spline |
 | `fastkan_gsr` | greedy symbolic regression | Gaussian RBF |
-| `gmp` | gated greedy matching pursuit | configured symbolic atom bank |
+| `gmp` | Gated Matching Pursuit | configured symbolic atom bank |
 | `multkan_deep_autosym` | baseline symbolic regression | B-spline |
 | `fast_multkan_deep_autosym` | baseline symbolic regression | Gaussian RBF |
 | `multkan_deep_gsr` | greedy symbolic regression | B-spline |
 | `fast_multkan_deep_gsr` | greedy symbolic regression | Gaussian RBF |
-| `multkan_deep_gmp` | gated greedy matching pursuit | configured symbolic atom bank |
+| `multkan_deep_gmp` | Gated Matching Pursuit | configured symbolic atom bank |
 
 The shallow and deep methods are regression-only in the benchmark harness.
 
@@ -99,13 +99,13 @@ The shallow and deep methods are regression-only in the benchmark harness.
 | `rils_rols` | RILS-ROLS iterated-local-search symbolic regression | `rils-rols` |
 | `udsr` | unified Deep Symbolic Regression (LINEAR/poly + GP meld) | official DSO PyTorch package |
 | `sindy` | SINDy-12 static sparse-library regression using STLSQ (<=12 active non-bias terms) | `pysindy==2.1.0` |
-| `sindy_unconstrained` | Appendix-only native-capacity SINDy sensitivity | `pysindy==2.1.0` |
+| `sindy_unconstrained` | uncapped SINDy capacity sensitivity | `pysindy==2.1.0` |
 | `parfam` | ParFam continuous-global-optimization symbolic regression | `parfam==0.0.2` |
 | `eql` | EQL-Div analytic-unit network | built-in PyTorch reproduction of the published architecture |
 | `pysr` | PySR / SymbolicRegression.jl evolutionary symbolic regression | `pysr==2.2.1` |
 | `operon` | Operon genetic-programming symbolic regression | `pyoperon==0.6.1` |
 
-The harness passes explicit operator sets and compute limits from the selected profile. Under `research`/`research_modern`, direct symbolic primitives are restricted to the shared `core10` vocabulary wherever the public method API permits; unavoidable method-native exceptions are recorded in run metadata. These methods are regression-only. The `research_modern` profile extends the primary `research` matrix with `symbolic_kan`, `pse`, `rils_rols`, `udsr`, `sindy`, `parfam`, and `eql`. The main `sindy` entry is the 12-term controlled variant; `sindy_unconstrained` is an explicit appendix-only model override and is absent from the main comparison model set. PSE, RILS-ROLS, uDSR, PySINDy, and ParFam use their public/official packages; EQL-Div is a transparent PyTorch reproduction because the released authors' implementations require legacy Theano/TensorFlow; Symbolic-KAN executes the authors' pinned `train_regression_onehot` implementation directly, with the benchmark arrays injected in place of its demo data generator. Before a benchmark matrix is launched, selected external dependencies are validated. SR-KAN is intentionally installed from the authors' repository: the package currently published on PyPI under the name `srkan` is a different project, so the preflight also checks for the official `regressor` and `SympyEvaluator` API. Operon is checked by importing `pyoperon.sklearn`, which catches missing native/shared-library dependencies rather than producing one failed record per task. PySR installation is checked without importing the Julia bridge during preflight.
+The harness passes operator sets and compute limits from the selected profile. Under `research` and `research_modern`, direct symbolic primitives are restricted to `core10` wherever the public method API permits; method-native exceptions are recorded in run metadata. `research_modern` schedules `symbolic_kan`, `pse`, `rils_rols`, `sindy`, `parfam`, and `eql` in addition to the `research` models. Model identifier `udsr` is registered but is not selected by that profile. The 23-entry `main_comparison_models` field excludes `pse` and `anfis`. `sindy` is the 12-term controlled variant, while `sindy_unconstrained` is a separate capacity-sensitivity override. PSE, RILS-ROLS, uDSR, PySINDy, and ParFam use their public packages; EQL-Div is implemented in-tree with PyTorch because the released implementations target older Theano/TensorFlow stacks. Symbolic-KAN calls the pinned upstream `train_regression_onehot` routine with benchmark arrays in place of its demo data generator. Dependency checks run before selected external jobs are scheduled. SR-KAN is installed from the authors' repository and checked for the expected `regressor` and `SympyEvaluator` API. Operon is checked through `pyoperon.sklearn`.
 
 ## Trainable fuzzy-system baseline
 

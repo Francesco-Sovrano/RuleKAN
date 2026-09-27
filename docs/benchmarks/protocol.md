@@ -2,46 +2,41 @@
 
 ## Configuration and profile resolution
 
-`benchmarks/configs/default.yaml` is the executable benchmark configuration. A profile may inherit from another profile with
+`benchmarks/configs/default.yaml` is the executable benchmark configuration. Profiles may inherit from another profile with `extends`. Nested mappings are merged recursively; scalars and lists in the child profile replace the parent value.
 
-```yaml
-extends: parent_profile
+`benchmarks.config_utils.resolve_profile()` resolves inheritance before execution. `benchmarks.run_benchmark` expands a resolved profile into task/model/seed jobs and launches each job in a separate subprocess.
+
+Registered suites, models, and profiles are available with:
+
+```bash
+python -m benchmarks.run_benchmark --profile research --list
 ```
-
-Nested mappings are merged recursively. Scalar values replace parent values. Lists such as `models`, `tasks`, `suites`, `width_values`, and `library_values` replace the corresponding parent list.
-
-`benchmarks.config_utils.resolve_profile()` performs this merge before execution. `benchmarks.run_benchmark` expands the resolved profile into task/model/seed jobs and launches each job in a separate subprocess.
 
 ## Data splits
 
-Synthetic regression and fuzzy tasks are generated independently for each seed from the ranges declared in `benchmarks/specs.py`. Inputs are standardized using the training-set mean and standard deviation. Synthetic regression targets remain in their native scale.
+Synthetic regression and fuzzy tasks are generated independently for each seed from the domains in `benchmarks/specs.py`. Inputs are standardized from training-set statistics. Synthetic regression targets retain their native scale.
 
-Real and tabular tasks use a seeded train/temporary split followed by a seeded validation/test split. Input standardization is fitted on the training split. Regression targets are standardized with training-target statistics; binary targets are not standardized.
+Real and tabular tasks use seeded train/temporary and validation/test splits. Input standardization is fitted only on the training split. Regression targets are standardized from training-target statistics; binary targets are not standardized.
 
-The split roles are:
+Split roles are fixed:
 
 - **training:** numerical fitting and continuous symbolic parameter fitting;
-- **validation:** checkpoint selection, pruning decisions, symbolic candidate selection, adaptive support rescue, composition rescue, powered-expression selection, reciprocal-domain admissibility, and validation-gated cleanup;
-- **test:** final predictive and structural evaluation after model selection is complete.
+- **validation:** checkpoint selection, pruning, symbolic candidate selection, support augmentation, composition selection, power/ratio selection, reciprocal-domain admissibility, and cleanup;
+- **test:** final predictive and structural evaluation after model selection.
 
-Some internal KAN APIs call their held-out tensors `test_input` and `test_label`. `BenchmarkData.dataset_dict()` maps the benchmark validation split to those internal names. The benchmark test split is not passed to those training APIs.
+Some internal KAN APIs use `test_input` and `test_label` names for held-out tensors. `BenchmarkData.dataset_dict()` maps the benchmark validation split to those internal fields. The benchmark test split is not passed to those training APIs.
 
 ## Shared capacity and symbolic controls
 
-Profiles may enable `shared_settings` to align comparable controls across method families.
-
-`W` denotes total hidden/rule width, not product arity. Under the shared-capacity resolver:
+`W` denotes the shared numerical width, while `q` denotes maximum product order. Under shared capacity:
 
 - RuleKAN-family models receive `n_rules = W`;
 - shallow MultKAN divides `W` between additive and multiplication units;
-- deep MultKAN preserves total width `W` in each configured hidden layer;
+- deep MultKAN preserves total hidden width `W` in each configured hidden layer;
 - vanilla KAN receives hidden width `W`;
-- ANFIS uses `W` fuzzy rules when the shared capacity applies;
-- product arity is fixed by `max_product_order`; the principal controlled profiles use `q=3` for every task.
+- ANFIS uses `W` fuzzy rules when shared capacity is enabled.
 
-Shared settings can also align grid resolution, symbolic vocabulary, hard-screening controls, and minimum symbolic rule budget.
-
-The `research` profile uses:
+The `research` family of profiles uses:
 
 ```yaml
 capacity:
@@ -57,26 +52,31 @@ symbolic_joint_scale_refit: true
 symbolic_rule_budget_at_least_width: true
 ```
 
-`target_core` is the 14-operator benchmark library documented in [Symbolic library](../reference/symbolic-library.md).
+`target_core` is an alias of the ten-primitive `core10` vocabulary:
 
-## Principal profiles
+```text
+x, x^2, 1/x, 1/x^2, sqrt, log, exp, sin, cos, tanh
+```
 
-The task counts below are the resolved number of tasks selected by each profile.
+Each RuleKAN factor applies one primitive to an affine argument. Compound shortcuts are excluded from this controlled vocabulary.
 
-| Profile | Seeds | Tasks | Methods | Timeout/job | Purpose |
-|---|---:|---:|---:|---:|---|
-| `quick` | 1 | 3 | 10 | 900 s | small execution smoke test |
-| `standard` | 3 | 28 | 12 | 2400 s | fuzzy, synthetic, nested, canonical KAN, Feynman-style, and small real-data benchmark |
-| `research` | 3 | 32 | 19 | 2400 s | principal benchmark; adds powered-expression tasks and RuleKAN/SISP/PowerRuleKAN variants |
-| `main` | 3 | 32 | 19 | 2400 s | alias of `research` through profile inheritance |
-| `fuzzy` | 3 | 7 | 13 | 2400 s | complete fuzzy-rule suite |
-| `paper` | 3 | 19 | 7 | 5400 s | reference KAN symbolic-extraction comparison using the 25-operator library and its own capacity settings |
-| `ablation` | 3 | 14 | 14 | 2400 s | RuleKAN component ablation on a representative research-task subset |
-| `width_sensitivity` | 3 | 8 | 12 | 5400 s | shared-width sweep over `W={6,8,10,12,16,24}` |
-| `power_expression_quick` | 3 | 4 | 3 | 900 s | focused powered-expression comparison |
-| `full` | 5 | 32 | 17 | 5400 s | broad benchmark including UCI binary tasks |
+## Thirty-task analytic comparison
 
-The resolved `research` method list is:
+The controlled analytic comparison uses six suites and 30 noise-free tasks:
+
+| Suite | Count |
+|---|---:|
+| `synthetic_core` | 6 |
+| `fuzzy_rules` | 7 |
+| `power_expression_stress` | 4 |
+| `nested_stress` | 5 |
+| `kan_canonical` | 3 |
+| `feynman` | 5 |
+| **Total** | **30** |
+
+The analytic protocol uses seeds `0,1,2`, `1600/400/500` train/validation/test observations, `W=12`, grid `12`, `q=3`, `core10`, and a 2400-second per-job limit.
+
+The 23 main comparison model identifiers are:
 
 ```text
 rulekan
@@ -86,7 +86,6 @@ rulekan_fast
 rulekan_omp_full
 sisp
 sisp_comp
-sisp_fast
 power_rulekan
 power_rulekan_comp
 autosym
@@ -94,52 +93,88 @@ fastkan_autosym
 gsr
 fastkan_gsr
 gmp
+srkan
+symbolic_kan
+rils_rols
+sindy
+parfam
+eql
+pysr
+operon
+multkan_deep_gsr
+```
+
+These are the `research_modern.main_comparison_models`. The exact 30-task matrix is run by overriding the two extra small real-data tasks and the two additional scheduled models in `research_modern`:
+
+```bash
+python -m benchmarks.run_benchmark \
+  --config benchmarks/configs/default.yaml \
+  --profile research_modern \
+  --suites fuzzy_rules,synthetic_core,power_expression_stress,nested_stress,kan_canonical,feynman \
+  --models rulekan,rulekan_comp,rulekan_adaptive,rulekan_fast,rulekan_omp_full,sisp,sisp_comp,power_rulekan,power_rulekan_comp,autosym,fastkan_autosym,gsr,fastkan_gsr,gmp,srkan,symbolic_kan,rils_rols,sindy,parfam,eql,pysr,operon,multkan_deep_gsr \
+  --seeds 0,1,2 \
+  --run-dir benchmark_results/analytic_30
+```
+
+`research_modern` without overrides selects 32 tasks and 25 scheduled models. Its `main_comparison_models` field contains the 23 identifiers above. The additional scheduled models are `pse` and `anfis`; the additional tasks are the two `real_small` tasks.
+
+SINDy in the main comparison is `sindy`, which is limited to 12 active non-bias library terms. `sindy_unconstrained` uses the same feature dictionary and optimizer without the final support cap and is a separate capacity-sensitivity condition.
+
+### Metrics and inference
+
+Predictive accuracy is test NRMSE, defined as test RMSE divided by the standard deviation of the test target. Each analytic task is summarized by the median over its three seeds. Failed runs remain in the 30-task predictive protocol through a per-task worst-error penalty before the seed median is computed. Pairwise predictive tests use two-sided Wilcoxon signed-rank tests on paired log-NRMSE ratios across the 30 task medians, with Benjamini-Hochberg false-discovery-rate correction across the 14 external-baseline comparisons.
+
+The seven fuzzy tasks additionally use expanded-rule F1 and exact gate-and-branch recovery. Failed structural runs contribute zero. Exact recovery is evaluated over the 21 task-seed runs with paired exact McNemar tests and the same false-discovery-rate correction. [Metrics and figures](metrics-and-figures.md) specifies the scoring and distinguishes this 30-task protocol from the generic all-pairs Holm diagnostics produced by `benchmarks.aggregate`.
+
+## Profiles
+
+Resolved counts for the principal profiles are:
+
+| Profile | Seeds | Tasks | Scheduled methods | Timeout/job | Scope |
+|---|---:|---:|---:|---:|---|
+| `quick` | 1 | 3 | 10 | 900 s | smoke test |
+| `standard` | 3 | 28 | 12 | 2400 s | fuzzy, product, nested, canonical, physics, and small real-data tasks |
+| `research` | 3 | 32 | 19 | 2400 s | RuleKAN/SISP/PowerRuleKAN research matrix plus two small real-data tasks |
+| `main` | 3 | 32 | 19 | 2400 s | inherited alias of `research` |
+| `research_modern` | 3 | 32 | 25 | 2400 s | research matrix with contemporary baselines; 23 models are marked for main comparison |
+| `fuzzy` | 3 | 7 | 13 | 2400 s | fuzzy-rule suite |
+| `paper` | 3 | 19 | 7 | 5400 s | KAN extraction subset using `paper25` |
+| `ablation` | 3 | 14 | 14 | 2400 s | component ablation |
+| `width_sensitivity` | 3 | 8 | 12 | 5400 s | shared-width sweep over `W={6,8,10,12,16,24}` |
+| `power_expression_quick` | 3 | 4 | 3 | 900 s | power/ratio subset |
+| `full` | 5 | 32 | 17 | 5400 s | broad matrix including UCI binary tasks |
+
+The resolved `research` model list is:
+
+```text
+rulekan
+rulekan_comp
+rulekan_adaptive
+rulekan_fast
+rulekan_omp_full
+sisp
+sisp_comp
+power_rulekan
+power_rulekan_comp
+autosym
+fastkan_autosym
+gsr
+fastkan_gsr
+gmp
+srkan
 pysr
 operon
 anfis
 multkan_deep_gsr
 ```
 
-Additional profiles are defined for exhaustive method matrices and controlled analyses:
+Additional configured profiles cover deep MultKAN comparisons, reduced-budget smoke runs, width and library sensitivity, pursuit ablations, numerical logic compression, composition ablation, and baseline repair.
 
-| Profile | Resolved scope |
-|---|---|
-| `research_exhaustive` | 32 research tasks, 24 methods |
-| `fuzzy_exhaustive` | 7 fuzzy tasks, 19 methods |
-| `deep_multkan_quick`, `deep_multkan` | shallow/deep multiplication comparisons |
-| `ablation_quick` | one-seed reduced-budget ablation smoke test |
-| `width_sensitivity_quick` | one-seed reduced-budget width sweep over `W={6,8,10,12}` |
-| `library_sensitivity_quick` | symbolic vocabulary sweep over `core10`, `medium16`, and `research26` |
-| `controlled_compare`, `controlled_compare_quick` | matched-capacity comparisons |
-| `omp_ablation`, `fuzzy_omp_ablation` | RuleKAN pursuit/extractor variants |
-| `deep_ablation` | shallow/deep MultKAN symbolic pipelines |
-| `logic_compressed`, `fuzzy_logic_compressed` | numerical logic-compression variants |
-| `composition_ablation_quick`, `composition_ablation` | flat versus depth-2 symbolic composition variants |
-| `baseline_repair` | external `operon` and `anfis` rows on the research task/data configuration |
+## Ablation configuration
 
-Use
+`ablation` extends `research` and replaces the selected models and tasks. Seeds, synthetic split sizes, timeout, RuleKAN configurations, shared width, grid, factor order, symbolic library, hard-screening controls, and symbolic rule-budget policy are inherited from `research`.
 
-```bash
-python -m benchmarks.run_benchmark --list --profile research
-```
-
-to print registered suites, models, and profiles.
-
-## Research and ablation comparability
-
-`ablation` extends `research` and overrides only `description`, `models`, `suites`, and `tasks`. After profile resolution, the following are exactly equal between the two profiles:
-
-- seeds;
-- data split sizes and real-data sample cap;
-- per-job timeout;
-- `model_config.rulekan`;
-- `model_config.rulekan_fast`;
-- all inherited RuleKAN pursuit-variant configurations;
-- shared capacity, grid, symbolic library, hard-screening controls, residual-structure control, joint scale refit, and symbolic rule-budget policy.
-
-The `rulekan` row in `ablation` is therefore the same configured RuleKAN treatment as `rulekan` in `research`; the ablation profile changes the task subset and includes knockout model identifiers. The knockout adapters receive the inherited RuleKAN configuration and override only the mechanism named by the ablation identifier.
-
-The core factorial is:
+The `2^3` factorial uses:
 
 ```text
 rulekan
@@ -152,13 +187,13 @@ rulekan_no_pruning_no_gmp
 rulekan_no_product_no_pruning_no_gmp
 ```
 
-Additional ablations isolate one-shot pruning, symbolic backfitting, repeated-variable symbolic products, Gaussian-RBF numerical factors, OMP-linear pursuit, and graph redundancy controls.
+Additional ablation identifiers isolate one-shot pruning, backfitting, repeated-variable symbolic products, Gaussian-RBF numerical factors, OMP-linear pursuit, and graph-redundancy controls.
 
-## Research and width-sensitivity comparability
+## Width sensitivity
 
-`width_sensitivity` is not an exact `research` reproduction with only `W` changed. It shares the research seeds, synthetic data sizes, grid, fixed product order `q=3`, and `target_core` symbolic vocabulary, but it uses a separate sensitivity schedule.
+`width_sensitivity` shares the `research` seeds, synthetic split sizes, grid, `q=3`, and `target_core` vocabulary, but uses a separate optimization schedule and a 5400-second job limit. The `W=12` row in this profile is therefore part of the width-sensitivity configuration rather than an exact duplicate of the `research` row.
 
-The principal differences from `research` are:
+Key differences are:
 
 | Setting | `research` | `width_sensitivity` |
 |---|---:|---:|
@@ -166,23 +201,21 @@ The principal differences from `research` are:
 | RuleKAN `stage_scale` | 0.24 | 0.12 |
 | RuleKAN `plateau_rounds` | 4 | 2 |
 | RuleKAN `numeric_lbfgs_steps` | 40 | default 0 |
-| RuleKAN rank continuation | enabled, caps 3 and 6 | not enabled by the profile |
-| shared hybrid hard screening | enabled | not enabled by the profile |
-| shared residual structure top-k | 1 | not enabled by the profile |
-| shared joint scale refit | enabled | not enabled by the profile |
-| width control | fixed `W=12`, `mult_units=4` | sweep `W={6,8,10,12,16,24}`, multiplication units derived from `mult_fraction=0.375`, minimum 2 |
-
-The `W=12` sensitivity condition should therefore be interpreted inside the width-sensitivity experiment, not as the research baseline row.
+| rank continuation | enabled | not enabled by the profile |
+| hybrid hard screening | enabled | not enabled by the profile |
+| residual structure top-k | 1 | not enabled by the profile |
+| joint scale refit | enabled | not enabled by the profile |
+| width | fixed `W=12` | `W={6,8,10,12,16,24}` |
 
 ## Execution and process isolation
 
-Each scheduled task/model/seed condition runs in its own subprocess. CPU is the default device. CPU workers use approximately 50% of available logical CPUs unless `--workers` or `--cpu-fraction` overrides the policy. Each CPU subprocess uses one PyTorch/BLAS thread by default. CUDA and MPS default to one benchmark subprocess at a time.
+Each task/model/seed condition runs in a separate subprocess. CPU is the default device. CPU workers use approximately half of available logical CPUs unless `--workers` or `--cpu-fraction` changes the worker policy. Each CPU subprocess uses one PyTorch/BLAS thread by default. CUDA and MPS use one benchmark subprocess at a time unless explicitly changed.
 
-Timeouts terminate the complete experiment process group. Runtime exceptions are written to result JSON with traceback. With `--keep-going`, remaining jobs continue after failures.
+Timeout handling terminates the experiment process group. Runtime exceptions are written to result JSON with traceback information. `--keep-going` continues with remaining jobs after a failure.
 
 ## Resume and provenance
 
-Each result record contains:
+Each result record includes source/configuration provenance fields such as:
 
 ```text
 code_version
@@ -196,17 +229,27 @@ platform
 torch_version
 ```
 
-Resume is enabled by default and completed JSON records are reused even when the active source/configuration fingerprint differs; the fingerprint is retained for provenance and the runner reports changed-build reuse in its compact resume summary. Pass `--no-reuse-completed` for strict same-build reruns. `--verbose-resume` prints per-job resume decisions, and `--show-build-fingerprint` prints the active fingerprint.
+Resume is enabled by default. Completed JSON records are reused even when the active build fingerprint differs; the stored fingerprint remains available in the result metadata. Use `--no-reuse-completed` to recompute completed conditions under the active source/configuration state. `--verbose-resume` prints per-job reuse decisions, and `--show-build-fingerprint` prints the active fingerprint.
 
-A run begins with a `running` JSON. If the parent process or machine stops before terminal status is written, that record remains `running` and is reported as incomplete.
+A scheduled job writes a `running` record before completion. An interrupted job therefore remains visible as incomplete rather than disappearing from the run directory.
 
 ## Aggregation and status files
 
-`benchmarks/aggregate.py` regenerates aggregate CSV files, `summary.md`, and PDF figures. RuleKAN-family numerical and symbolic metrics are normalized into stage-consistent aggregate columns.
+`benchmarks/aggregate.py` generates aggregate CSV files, Markdown summaries, status diagnostics, and PDF figures from per-condition JSON records.
 
-A run directory contains status diagnostics including:
+Typical run-directory outputs include:
 
 ```text
+runs/
+logs/
+figures/
+benchmark_config_snapshot.yaml
+runs.csv
+summary.csv
+summary.md
+symbolic_runs.csv
+symbolic_summary.csv
+latest_results.md
 STATUS.txt
 incomplete_runs.csv
 failure_summary.csv
@@ -214,53 +257,45 @@ skipped_incompatible_jobs.csv
 skipped_incompatible_jobs.json
 ```
 
-For an existing run directory:
+A status summary can be printed with:
 
 ```bash
 python tools/explain_benchmark_status.py benchmark_results/current
 ```
 
-prints non-completed task/model/seed records with their status, error, elapsed time, result path, and log path.
+## External symbolic-regression dependencies
 
-## Optional external symbolic-regression dependencies
+`benchmarks/requirements-benchmark.txt` contains dependencies that can be installed directly into the main Python-3.12 environment. `setup.sh` handles source-based or special-install dependencies used by selected baselines:
 
-`benchmarks/requirements-benchmark.txt` installs the directly pip-compatible benchmark dependencies, including PySR and the official SR-KAN implementation. RILS-ROLS and PyOperon are installed by `setup.sh` because they need special build handling; official Symbolic-KAN is reconstructed by `setup.sh` as a pinned source checkout under `external/`. The pinned evolutionary baselines are:
+- Symbolic-KAN: pinned upstream checkout under `external/Pub_Symbolic_KANs`, commit `9481a82`;
+- PyOperon: source build of `v0.6.1` when needed;
+- RILS-ROLS: installation without build isolation.
 
-```text
-pysr==2.2.1
-pyoperon==0.6.1
-```
+SR-KAN is installed from the authors' repository and is checked for the expected `regressor` and `SympyEvaluator` API. The package published on PyPI under the name `srkan` is not the implementation used by the benchmark adapter.
 
-SR-KAN is installed from the authors' GitHub repository; `benchmarks/requirements-srkan.txt` provides the narrow SR-KAN-only install. The unrelated PyPI package named `srkan` does not provide the API expected by the benchmark adapter.
+Optional dependency checks are performed only for selected models. Operon is import-tested through `pyoperon.sklearn`; PSE through `psrn`; RILS-ROLS through `rils_rols.rils_rols`; uDSR through `dso`; SINDy through `pysindy`; and ParFam through `parfam`. EQL is implemented in-tree with PyTorch and SymPy.
 
-Selected external baselines are checked before job construction. Operon is import-tested through `pyoperon.sklearn`; SR-KAN is checked for the expected `regressor` and `SympyEvaluator` API; PSE is checked through `psrn`; RILS-ROLS is checked through `rils_rols.rils_rols`; uDSR is checked through `dso`; SINDy-12 and its appendix unconstrained sensitivity are checked through `pysindy`; ParFam is checked through `parfam`; PySR installation is checked without importing the Julia bridge during preflight. EQL is implemented in-tree and has no extra runtime dependency beyond PyTorch/SymPy. Operator grammars and compute budgets are profile-controlled.
-
-The `research_modern` profile adds Symbolic-KAN, PSE, RILS-ROLS, uDSR, SINDy-12, ParFam, and EQL to the primary research matrix. Unconstrained SINDy is absent from the main comparison model set and is run only by explicitly overriding `--models sindy_unconstrained` for appendix diagnostics. PSE, RILS-ROLS, uDSR, PySINDy, and ParFam use their public/official packages directly; EQL-Div is an in-tree PyTorch reproduction of the published architecture, division curriculum, sparsity schedule, and model-selection criterion; the lambda grid is coarsened to fit the common job budget. Symbolic-KAN uses the authors' `Pub_Symbolic_KANs` source, checked out by `setup.sh` at commit `9481a82`; the adapter calls the upstream regression training routine and supplies the benchmark data without rewriting the optimization, selection, hardening, or LBFGS logic.
+uDSR is registered as model identifier `udsr` but is not selected by the default `research_modern` profile. Its upstream dependency constraints require a separate compatible environment.
 
 ## Commands
 
-Run the complete research profile:
+Run a configured profile:
 
 ```bash
-./run_rulekan_benchmark.sh research --no-resume
+./run_rulekan_benchmark.sh research
+./run_rulekan_benchmark.sh ablation
+./run_rulekan_benchmark.sh fuzzy
 ```
 
-Run the full ablation profile:
-
-```bash
-./run_rulekan_benchmark.sh ablation --no-resume
-```
-
-The ablation matrix, output files, resume behavior, and standalone OFAT command are specified in [Ablations](ablations.md).
-
-Run selected research methods:
+Run selected methods and tasks:
 
 ```bash
 python -m benchmarks.run_benchmark \
   --profile research \
   --models rulekan,rulekan_adaptive,power_rulekan,sisp \
+  --tasks mixed_rank4,power_ratio_product \
   --seeds 0,1,2 \
-  --run-dir benchmark_results/research_rulekan_family
+  --run-dir benchmark_results/subset
 ```
 
 Run one suite:
@@ -272,9 +307,8 @@ python -m benchmarks.run_benchmark \
   --run-dir benchmark_results/fuzzy
 ```
 
+## SINDy term budget
 
-### SINDy-12 complexity control
+`sindy` uses the same `core10` elementary atoms and task-specific interaction order as the controlled comparison, with at most 12 active non-bias terms. For each STLSQ threshold candidate, an over-budget support is ranked by empirical RMS contribution, reduced to the 12 strongest non-bias terms, jointly OLS-refit, and scored on validation data. The bias term does not consume the 12-term budget.
 
-The main comparison caps SINDy at 12 active non-bias library terms. This is a symbolic term-budget control, not an assertion that a SINDy term and a KAN hidden unit have identical parameter counts. For every STLSQ threshold candidate, an over-budget support is ranked by empirical RMS contribution (`|coef_j| * rms(feature_j)`), reduced to the 12 strongest non-bias terms, and jointly OLS-refit; validation error is then computed on the capped model. The bias/constant column does not consume one of the 12 terms.
-
-The `sindy_unconstrained` appendix condition uses the identical primitive library, task-specific interaction order, threshold grid, data split, and STLSQ configuration but does not impose the support cap. Its formula term count and serialized character length are logged explicitly so the appendix can show when predictive accuracy is purchased by a very large expansion.
+`sindy_unconstrained` uses the same dictionary, threshold grid, data split, and STLSQ procedure without the final support cap. Formula term count and serialized length are recorded for the capacity comparison.

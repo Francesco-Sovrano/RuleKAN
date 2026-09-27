@@ -4,7 +4,7 @@
 
 Let `x=(x_0,...,x_{d-1})` be the input. `W` denotes numerical rule capacity and `q` the maximum number of factors in one rule.
 
-### Numerical RuleKAN
+### Stage 1: numerical interaction model
 
 The numerical model is
 
@@ -13,13 +13,13 @@ f_{\mathrm{num}}(x)=b+\sum_{r=1}^{W}q_r a_r
 \prod_{s=1}^{q}\left[(1-m_{rs})+m_{rs}h_{rs}(x_{j_{rs}})\right].
 \]
 
-`q_r` is a differentiable rule-presence gate, `m_rs` is a factor-presence gate, `j_rs` is a categorical variable choice, and `h_rs` is a learned univariate numerical edge. Ordinary RuleKAN uses cubic B-spline edge banks. RuleKAN-RBF replaces only the numerical edge bank with Gaussian RBFs.
+`q_r` (the implementation counterpart of the paper notation `rho_r`) is a differentiable rule-presence gate, `m_rs` is a factor-presence gate, `j_rs` is a categorical variable choice, and `h_rs` is a learned univariate numerical edge. Ordinary RuleKAN uses cubic B-spline edge banks. RuleKAN-RBF replaces only the numerical edge bank with Gaussian RBFs.
 
 The multiplicative identity is controlled by `m_rs`; it is not encoded as a pseudo-variable. This allows a product rule to reduce continuously to lower order while variable choice remains a categorical feature selection problem.
 
-The `SumProductKAN` class can represent repeated-variable numerical products when `allow_self_products=True`. The benchmark RuleKAN family intentionally trains the numerical precursor with `allow_self_products=False`; repeated-variable symbolic factorization is recovered later from support closure. The reason is the same-variable non-identifiability described in [Identifiability and support](identifiability-and-support.md).
+The `SumProductKAN` class can represent repeated-variable numerical products when `allow_self_products=True`. The benchmark RuleKAN family trains the numerical precursor with `allow_self_products=False`; repeated-variable symbolic factorization is recovered later from support closure. The reason is the same-variable non-identifiability described in [Identifiability and support](identifiability-and-support.md).
 
-### Symbolic RuleKAN
+### Stage 2: symbolic sum-product model
 
 The final symbolic model has the form
 
@@ -82,9 +82,9 @@ contains two independent rules with support `{x,y}` and multiplicity `(x,x,y,y)`
 
 This separation is necessary because a flexible numerical rule does not uniquely determine how many symbolic mechanisms should appear after symbolic conversion.
 
-## Learned-support grammar
+## Stage-2 variable grammar
 
-If the numerical precursor evidences support classes `S_1,...,S_U`, RuleKAN's admissible symbolic structures are
+For a primary Stage-1 support bank `S_1,...,S_U`, RuleKAN begins with the symbolic structures
 
 \[
 \mathcal G_R=
@@ -111,13 +111,13 @@ with
 |\mathcal G_S|=\binom{d+q}{q}-1.
 \]
 
-RuleKAN and SISP therefore share a symbolic language but differ in where admissible variable structures come from.
+RuleKAN and SISP therefore share the same factor language but differ in the source of admissible variable structures. RuleKAN may also apply bounded, validation-gated support augmentation derived from Stage-1 evidence: nonempty support subsets, selected pre-pruning supports, and gate-aware unions. These operations do not enumerate arbitrary supports. SISP performs the unrestricted multiset enumeration through order `q`.
 
 ## Symbolic rank capacity
 
 The number of numerical rules is not an upper bound on the number of final symbolic rules. A flexible numerical component can absorb several symbolic mechanisms. Benchmark profiles therefore ensure the symbolic rule budget is at least the shared numerical width, and rank continuation can allocate several symbolic rules to one support.
 
-## PowerRuleKAN model class
+## Stage 3: PowerRuleKAN model class
 
 PowerRuleKAN extends the outer grammar to
 

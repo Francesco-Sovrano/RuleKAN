@@ -1,52 +1,75 @@
-# Additional contemporary symbolic-regression baselines
+# Contemporary symbolic-regression baselines
 
-The `research_modern` profile extends `research` with seven regression-only baselines:
+The benchmark harness registers the following additional regression baselines:
 
-- `symbolic_kan`: the authors' official `sfaroughi3/Pub_Symbolic_KANs` implementation, checked out by `setup.sh` at commit `9481a82`. The adapter calls the upstream `Exp_reaction_diffusion/symKanTraining.py::train_regression_onehot` routine directly and only replaces its demo data generator with the benchmark train/validation tensors. Prediction uses the upstream hardened symbolic evaluator; the benchmark additionally serializes the trained discrete network for structural scoring. Run metadata sets `symbolic_kan_exact_official_code=true`.
-- `pse`: PSE/PSRN through the official `psrn` Python package, corresponding to Ruan et al. (2026), DOI `10.1038/s43588-025-00904-8`. The adapter uses the public `PSRN_Regressor` API and scores the returned expression directly.
-- `rils_rols`: RILS-ROLS through the public `rils-rols` package, corresponding to Kartelj and Dukanovic (2023), DOI `10.1186/s40537-023-00743-2`.
-- `udsr`: unified Deep Symbolic Regression through the official DSO PyTorch package. The adapter enables the NeurIPS-2022 `poly`/LINEAR token and GP meld, then exports the best `program_` expression returned by the public `DeepSymbolicRegressor` API.
-- `sindy`: **SINDy-12**, a static sparse-library control using PySINDy's official `STLSQ` optimizer. The adapter builds the matched analytic dictionary and applies SINDy's sparse-regression core to `y=f(x)`, but the final expression is capped at 12 active non-bias library terms. Over-budget STLSQ solutions are reduced by RMS contribution strength and jointly OLS-refit before validation selection. `sindy_unconstrained` is excluded from the main comparison model set and is used only as an explicitly requested appendix diagnostic.
-- `parfam`: the official ICLR-2025 `parfam` package through `ParFamWrapper`. The adapter passes the benchmark arrays directly, uses the package's `small` configuration by default, and records the returned `formula_reduced`.
-- `eql`: a budgeted PyTorch reproduction of the ICML-2018 EQL-Div architecture: native identity/sine/cosine hidden units, multiplication units, final regularized division, the published three-phase sparsity schedule, and validation+sparsity model selection over depth and regularization strength. The authors' released code targets legacy Theano/TensorFlow stacks, so metadata explicitly records that the original source is not executed unchanged.
+- `symbolic_kan`: official `sfaroughi3/Pub_Symbolic_KANs` source pinned by `setup.sh` to commit `9481a82`. The adapter calls `Exp_reaction_diffusion/symKanTraining.py::train_regression_onehot`, supplies benchmark train/validation arrays, evaluates the hardened symbolic network, and serializes the discrete structure for structural scoring.
+- `pse`: PSE/PSRN through the public `psrn` package and `PSRN_Regressor` API.
+- `rils_rols`: RILS-ROLS through the public `rils-rols` package.
+- `udsr`: unified Deep Symbolic Regression through the DSO PyTorch package, with the `poly`/LINEAR token and GP meld enabled by the adapter.
+- `sindy`: SINDy-12 through PySINDy's `STLSQ` optimizer. The matched analytic dictionary is used for `y=f(x)` and the selected expression is limited to 12 active non-bias terms. Over-budget supports are ranked by empirical RMS contribution and jointly OLS-refit before validation selection.
+- `sindy_unconstrained`: the same SINDy dictionary and optimizer without the final 12-term support cap.
+- `parfam`: the ICLR-2025 `parfam` package through `ParFamWrapper`, using the package's `small` configuration by default.
+- `eql`: an in-tree PyTorch implementation of the EQL-Div architecture with analytic unary units, multiplication units, regularized division, the three-phase sparsity schedule, and validation-plus-sparsity model selection.
 
+`research_modern` schedules `symbolic_kan`, `pse`, `rils_rols`, `sindy`, `parfam`, and `eql` in addition to the inherited `research` models. `udsr` is registered but is not selected by `research_modern`; it requires a separate compatible environment. The profile schedules 25 models in total, while its `main_comparison_models` field contains 23 models and excludes `pse` and `anfis`.
 
 ## Vocabulary policy
 
-`research_modern` inherits the `research` profile's shared `target_core`/`core10` vocabulary. Exact matching is enforced for the RuleKAN/KAN extraction family and SR-KAN. Symbolic-KAN is restricted to its closest official native bank (`x, x2, inv, sqrtx, log, exp, sin, cos, tanh`); its missing one-step inverse-square atom is constructible across its two symbolic blocks. PySR and Operon have non-core unary shortcuts removed under this profile. PSE, uDSR, RILS-ROLS, ParFam, and EQL retain documented method-native grammar constraints where their public APIs or architectures do not permit a literal one-to-one `core10` bank. SINDy-12 uses the exact `core10` atoms in its explicit static dictionary and the same task-specific product-order cap (at most three). Its final support is limited to 12 active non-bias terms; the appendix-only unconstrained variant uses the identical dictionary and optimizer without that support cap. Per-run metadata records the native bank and whether the match is exact. See `docs/reference/symbolic-library.md`.
+`research_modern` inherits the ten-primitive `target_core` / `core10` vocabulary. Exact matching is used where the public method API permits it.
 
-Install the external packages with:
+- **RuleKAN, KAN extraction controls, and SR-KAN:** exact ten-family match, using method-native aliases where necessary.
+- **Symbolic-KAN:** native bank `x, x2, inv, sqrtx, log, exp, sin, cos, tanh`; inverse square is not a direct primitive and can be constructed across symbolic blocks.
+- **PySR:** binary arithmetic plus `square, exp, sin, cos, tanh, sqrt, log, inv`; identity is a variable leaf and inverse square is compositional.
+- **Operon:** arithmetic, variables/constants, `square, exp, sin, cos, tanh, sqrt, log`; reciprocals are compositional through division.
+- **PSE/PSRN:** public arithmetic/identity grammar plus `sin, cos, exp, log, tanh`; no dedicated square-root token in the configured public grammar.
+- **uDSR:** public grammar including the `poly`/LINEAR token; it does not provide a literal one-to-one `core10` bank.
+- **RILS-ROLS:** method-native grammar because its estimator does not expose an operator-library constructor.
+- **SINDy-12:** exact `core10` atoms in a static feature dictionary with interactions through the task-specific factor order, capped at 12 active non-bias terms.
+- **ParFam:** native polynomial/rational families with `sin, cos, exp, log, sqrt, tanh`.
+- **EQL:** `x, x^2, 1/x, sqrt, log, exp, sin, cos, tanh` plus structural multiplication units; inverse square is compositional.
+
+Run metadata records the native symbolic bank and whether the requested vocabulary match is exact.
+
+## Installation
+
+Directly pip-installable dependencies are listed in:
 
 ```bash
 python -m pip install -r benchmarks/requirements-modern-sr.txt
 ```
 
-PSE/PSRN currently supports Python 3.9--3.12. The repository's normal setup uses Python 3.12.
+The complete environment, including source-based dependencies, is installed by `./setup.sh`. uDSR requires a separate environment compatible with the upstream DSO dependency pins.
 
-List or run the extended profile with:
+Inspect the profile and vocabulary mapping with:
 
 ```bash
 python -m benchmarks.run_benchmark --profile research_modern --list
 python -m benchmarks.vocabulary_audit --profile research_modern
+```
+
+Run the profile with:
+
+```bash
 ./run_rulekan_benchmark.sh research_modern
 ```
 
-To append only these baselines to an existing result directory without modifying its prior run records:
+Run selected additional baselines into a separate result directory with:
 
 ```bash
 python -m benchmarks.run_missing_baselines \
   --source-results benchmark_results/current \
   --dest-results benchmark_results/current_modern \
   --profile research_modern \
-  --models symbolic_kan,pse,rils_rols,udsr,sindy,parfam,eql
+  --models symbolic_kan,pse,rils_rols,sindy,parfam,eql
 ```
 
+## SINDy term-budget sensitivity
 
-### SINDy term-budget sensitivity
-
-The main 23-method comparison must use `sindy` (SINDy-12). The unconstrained condition is deliberately separated so that a very long fixed-dictionary expansion cannot enter the headline ranking. Run the appendix comparison with:
+The 23-method analytic comparison uses model identifier `sindy`, the 12-term controlled condition. The uncapped condition is run explicitly:
 
 ```bash
-python -m benchmarks.run_benchmark --profile research_modern --models sindy_unconstrained --run-dir benchmark_results/current
+python -m benchmarks.run_benchmark \
+  --profile research_modern \
+  --models sindy_unconstrained \
+  --run-dir benchmark_results/sindy_unconstrained
 ```
-

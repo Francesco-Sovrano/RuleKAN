@@ -1,8 +1,8 @@
-# Numerical training
+# Stage 1: numerical interaction discovery
 
 ## Numerical objective
 
-The numerical stage fits a SumProductKAN while learning rule presence, optional factor presence and variable assignments. Its purpose is twofold: obtain a strong numerical predictor and produce a high-recall variable-support graph for symbolic search.
+Stage 1 fits `SumProductKAN` while learning numerical term presence, optional factor presence, and variable assignments. Its output is a fitted numerical predictor together with retained and pre-pruning variable-support evidence for Stage 2.
 
 The default low-level schedule returned by `default_sum_product_schedule(symbolic=False)` has three phases:
 

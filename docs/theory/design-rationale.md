@@ -1,4 +1,4 @@
-# Architecture and design
+# RuleKAN architecture
 
 ## Baseline KAN structure
 
@@ -26,9 +26,9 @@ g(\beta x+\gamma).
 
 Rule amplitudes absorb multiplicative factor scale, leaving operator family and affine input chart as the primary factor parameters.
 
-## Structural additions relative to KAN
+## Structural mechanisms
 
-RuleKAN introduces the following mechanisms on top of the univariate-function substrate used by KAN:
+RuleKAN uses the following mechanisms with the univariate-function substrate used by KAN:
 
 1. **Explicit sum-product rule bank.** Product rules are represented directly rather than inferred only from general network topology.
 2. **Rule- and factor-level sparsity.** Differentiable gates support structural optimization before hard pruning.
@@ -38,8 +38,8 @@ RuleKAN introduces the following mechanisms on top of the univariate-function su
 6. **Multiplicity expansion.** A support may generate symbolic products containing repeated occurrences of the same variable.
 7. **Support-rank expansion.** Several additive symbolic rules may be allocated to one support.
 8. **Whole-rule symbolic pursuit.** Symbolic candidates are complete products evaluated in the context of the current additive model.
-9. **Optional support rescue and composition.** Validation may select a wider support bank or one licensed depth-2 symbolic composition.
-10. **Optional outer powers.** PowerRuleKAN applies positive and negative integer powers to complete symbolic bases.
+9. **Bounded support augmentation.** Nonempty subsets, pre-pruning supports, and gate-aware unions may be proposed from Stage-1 evidence and accepted by validation.
+10. **Optional composition and outer powers.** Composition variants add one analytic nesting level; PowerRuleKAN applies signed integer powers to complete symbolic bases.
 
 Multiplication itself is not unique to RuleKAN; MultKAN already provides multiplication nodes. RuleKAN's specific restriction is that the numerical rule bank defines admissible symbolic variable supports and that symbolic search operates on complete rules inside those supports.
 
@@ -47,7 +47,7 @@ Multiplication itself is not unique to RuleKAN; MultKAN already provides multipl
 
 The numerical precursor is used to identify variable participation and interaction support without requiring each learned edge function to already match a simple analytic primitive. This separation avoids forcing discrete symbolic choices during the early function-fitting phase.
 
-Numerical pruning can remove a support after other rules have adapted around it. RuleKAN therefore stores high-recall support evidence before pruning. The ordinary symbolic path uses the final active support bank. `RuleKAN Adaptive` can use the pre-pruning evidence when validation indicates that the primary symbolic model underfits.
+Numerical pruning can remove a support after other terms adapt around it, so high-recall support evidence is retained before pruning. The primary Stage-2 bank is constructed from retained supports. Configured validation-gated augmentation can additionally use nonempty subsets of retained supports, selected pre-pruning supports, and bounded gate-aware unions derived from Stage-1 evidence. `RuleKAN Adaptive` permits a larger use of the pre-pruning bank when the primary symbolic fit leaves a structured validation residual. RuleSISP is the only family member that enumerates arbitrary variable multisets independently of Stage 1.
 
 ## Same-variable factorization
 
@@ -101,7 +101,7 @@ symbolic_effective_support_bank
 symbolic_effective_support_source
 ```
 
-The ordinary primary support bank occupies this contract unless validation selects an adaptive high-recall rescue. PowerRuleKAN, affine-partition recovery, and other support-conditioned symbolic procedures consume the same effective support bank.
+The effective bank begins from the primary retained supports and may include configured validation-selected support augmentation derived from Stage-1 evidence. `RuleKAN Adaptive` can replace it with a wider pre-pruning-based bank when its rescue criteria are met. PowerRuleKAN, affine-partition recovery, composition search, and other support-conditioned procedures consume the same effective support payload.
 
 ## Complementary affine partitions
 
@@ -115,7 +115,7 @@ can be algebraically expanded into forms that have the same prediction error but
 
 ## Depth-2 symbolic composition
 
-Flat RuleKAN represents sums of products of univariate symbolic factors. Some targets require composition of a symbolic outer function with a multivariate inner RuleKAN expression. The composition-rescue variant permits one licensed depth-2 form and accepts it only when validation error improves according to the configured gate.
+Flat RuleKAN represents sums of products of univariate symbolic factors. Some targets require composition of a symbolic outer function with a multivariate inner RuleKAN expression. The composition-rescue variant permits one bounded depth-2 form and accepts it only when validation error improves according to the configured gate.
 
 The composition rescue changes symbolic depth, not the variable-support source. The inner expression remains built from the admissible support bank.
 

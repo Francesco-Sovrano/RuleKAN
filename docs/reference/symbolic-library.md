@@ -25,7 +25,7 @@ tanh
 arctan
 ```
 
-Compound shortcuts are intentionally excluded from the compact default.
+Compound shortcuts are excluded from the compact default.
 
 ## Benchmark libraries
 
@@ -48,7 +48,7 @@ This is the 25-operator vocabulary selected by the `paper` benchmark profile.
 
 ### `research26`
 
-The `paper25` operators are used without explicit constants `0` and `1`, because RuleKAN already has a global bias and per-rule amplitude. Three protected squared primitives are added:
+The `paper25` operators are used without explicit constants `0` and `1`, because RuleKAN already has a global bias and per-rule amplitude. The library also contains three protected squared primitives:
 
 ```text
 log1p_sq
@@ -73,7 +73,7 @@ cos
 tanh
 ```
 
-The shared benchmark alias `research` resolves to this 10-operator elementary vocabulary. Compound forms such as `gaussian`, `log1p_sq`, `sqrt1p_sq`, and `inv1p_sq` are deliberately excluded so that they must be reconstructed compositionally. Legacy `core14` remains accepted as an alias for reproducibility of old command lines. Use `research26` to request the larger distractor-rich library.
+The shared benchmark alias `research` resolves to this 10-operator elementary vocabulary. Compound forms such as `gaussian`, `log1p_sq`, `sqrt1p_sq`, and `inv1p_sq` are excluded, so models using this vocabulary must construct them with the available composition or whole-expression operators. `core14` remains accepted as a compatibility alias. Use `research26` to request the larger distractor-rich library.
 
 ### `medium16`
 
@@ -88,7 +88,7 @@ abs
 arctan
 ```
 
-Legacy `medium20` remains accepted as an alias.
+`medium20` remains accepted as a compatibility alias.
 
 ## Protected squared operators
 
@@ -108,13 +108,13 @@ The controlled `research`/`research_modern` profiles use `core10` as the concept
 
 External symbolic-regression systems are matched as closely as their public APIs permit:
 
-- **Symbolic-KAN:** `x, x2, inv, sqrtx, log, exp, sin, cos, tanh`. The official implementation has no one-step inverse-square atom; with two symbolic blocks, `1/x^2` can be composed from `x2` and `inv`. The previous duplicate `id`/`x` and `x3` shortcut are not used.
+- **Symbolic-KAN:** `x, x2, inv, sqrtx, log, exp, sin, cos, tanh`. The official implementation has no one-step inverse-square atom; with two symbolic blocks, `1/x^2` can be composed from `x2` and `inv`. The configured bank does not include duplicate identity tokens or an `x3` shortcut.
 - **PySR:** binary `+,-,*,/` plus `square,exp,sin,cos,tanh,sqrt,log,inv`. Extra unary shortcuts `cube`, `atan`, and `abs` are disabled; identity is a variable leaf and inverse-square is compositional.
 - **Operon:** arithmetic, constants/variables, `square,exp,sin,cos,tanh,sqrt,log`. Extra `atan` and `abs` shortcuts are disabled; reciprocal and inverse-square are compositional through division and square.
 - **PSE/PSRN:** its documented arithmetic/identity plus `sin,cos,exp,log,tanh` grammar is retained. Square and reciprocal can be composed, but the configured public grammar has no dedicated square-root token.
 - **uDSR:** the public uDSR function set is retained, including its defining `poly`/LINEAR token; its public grammar does not provide a literal one-to-one `core10` mapping.
 - **RILS-ROLS:** the public estimator does not expose an operator-library constructor option, so its method-native grammar is retained.
-- **SINDy-12:** the static dictionary contains the exact ten elementary atoms and tensor-product interactions up to the shared task-specific factor order (maximum three). The main-paper variant is capped at 12 active non-bias library terms; a constant/bias is uncharged. The appendix-only `sindy_unconstrained` condition uses the same dictionary and STLSQ optimizer without the final support cap, specifically to quantify the predictive/complexity trade-off of long fixed-library expansions.
+- **SINDy-12:** the static dictionary contains the exact ten elementary atoms and tensor-product interactions up to the shared task-specific factor order (maximum three). The main-comparison `sindy` condition is capped at 12 active non-bias library terms; a constant/bias is uncharged. `sindy_unconstrained` uses the same dictionary and STLSQ optimizer without the final support cap for a capacity-sensitivity comparison.
 - **ParFam:** polynomial and rational structure is native to the parametric family. The configured analytic functions are `sin, cos, exp, log, sqrt, tanh`, which cover the remaining `core10` families as closely as the public wrapper permits.
 - **EQL:** the unary bank is `x, x^2, 1/x, sqrt, log, exp, sin, cos, tanh` plus structural multiplication units. Inverse-square is compositional across the two EQL layers.
 

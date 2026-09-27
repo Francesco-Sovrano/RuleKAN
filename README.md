@@ -1,37 +1,56 @@
-# RuleKAN
+# RuleKAN: Addressing the Symbolic Expressivity Gap in KANs for Symbolic Regression
 
-RuleKAN is a symbolic-regression system built around sparse sums of multiplicative rules. A numerical `SumProductKAN` learns which variables participate together, and symbolic search replaces the numerical factors with analytic univariate functions while preserving the learned support structure.
+RuleKAN is a symbolic-regression method for recovering analytic structure that can be hidden by edge-wise symbolic extraction in Kolmogorov-Arnold Networks (KANs). A flexible KAN edge can approximate several analytic factors of the same variable as one univariate function, while multivariate interactions, fuzzy gate-and-branch structure, whole-expression powers or reciprocals, and nested composition require symbolic structure beyond an independent edge replacement.
 
-A RuleKAN predictor has the form
+The implementation separates numerical interaction discovery from symbolic factorization. **RuleKAN** trains a KAN-derived sum-product numerical model to identify variable supports, then searches explicit sums of products of analytic factors inside those supports. **RuleSISP** (Structure-Independent Symbolic Pursuit) searches the same symbolic language without restricting candidate variable multisets to learned supports. Optional bounded extensions add integer powers, reciprocals and ratios of complete symbolic bases, and one additional analytic composition level.
+
+A flat symbolic model has the form
 
 \[
-\hat y(x)=b+\sum_{r=1}^{R} a_r\prod_{j=1}^{m_r} g_{rj}(x_{v_{rj}}),
+\hat y(x)=b+\sum_{r=1}^{R}a_r\prod_{s=1}^{m_r}
+\psi_{k_{rs}}(\beta_{rs}x_{j_{rs}}+\gamma_{rs}),
+\qquad m_r\le q,
 \]
 
-where each rule is a product of univariate factors. The implementation also includes adaptive support recovery, depth-2 composition, structure-independent symbolic pursuit, and `PowerRuleKAN` models that apply integer powers and reciprocals to complete symbolic RuleKAN bases.
+where each factor uses one analytic primitive \(\psi_k\), an affine input chart, and one input variable. Repeated occurrences of the same variable are allowed during symbolic search. This permits structures such as \(e^x\sin x\) even when the numerical stage represented the full product with one learned univariate function. A two-branch fuzzy rule, \((1-g)u+gv\), is also a sum of products and can be represented with explicit gate and branch roles.
 
-## Repository layout
+## Method
 
-```text
-symbolic_kan/                 model implementations and symbolic utilities
-benchmarks/                   benchmark tasks, model adapters, configuration, runner, aggregation
-benchmarks/configs/           benchmark profiles and shared settings
-tools/                        standalone analysis and diagnostic commands
-examples/                     executable examples and experimental scripts
-tests/                        unit and regression tests
-docs/                         model, algorithm, benchmark, and API documentation
-benchmark_results/current/    main preserved benchmark run
-benchmark_results/archive/    additional preserved run directories
-run_rulekan_benchmark.sh      benchmark entry point
-setup.sh                      core environment bootstrap
-requirements.txt              core Python dependencies
-```
+RuleKAN uses three bounded stages.
 
-Generated benchmark files are kept under `benchmark_results/`; they are not expected in the repository root.
+**Stage 1 - numerical interaction discovery.** `SumProductKAN` fits an overcomplete sum of numerical product terms. Sparse rule and factor gates are hardened and pruned. The symbolic stage receives variable supports, not the shapes of the learned spline or RBF edge functions.
+
+**Stage 2 - symbolic sum-product search.** Each retained support is expanded into admissible variable multisets through maximum factor order `q`, including repeated variables and multiple additive terms with the same support. Candidate factors are selected from an analytic vocabulary, fitted as `g(beta*x + gamma)`, discretized, refitted, and selected in the context of the complete additive model. RuleSISP replaces learned-support conditioning with enumeration of all variable multisets through order `q`.
+
+**Stage 3 - bounded scope and depth extensions.** `PowerRuleKAN` applies signed integer powers to complete Stage-2 bases, which represents reciprocals and ratios. `RuleKAN-Comp`, `RuleSISP-Comp`, and `PowerRuleKAN-Comp` permit one additional analytic composition around selected symbolic bases.
+
+The principal implemented variants are:
+
+| Model identifier | Numerical support source | Symbolic family |
+|---|---|---|
+| `rulekan` | spline `SumProductKAN` | support-conditioned sums of products |
+| `rulekan_fast` | Gaussian-RBF `SumProductKAN` | same Stage-2 language as `rulekan` |
+| `rulekan_adaptive` | retained and validation-selected Stage-1 support evidence | support-conditioned sums of products |
+| `rulekan_omp_full` | learned supports | RuleKAN with OMP-style Stage-2 term selection |
+| `sisp` | no learned-support restriction | all variable multisets through order `q` |
+| `rulekan_comp` | learned supports | RuleKAN plus one composition level |
+| `sisp_comp` | no learned-support restriction | SISP plus one composition level |
+| `power_rulekan` | effective RuleKAN support bank | signed integer powers, reciprocals, and ratios of symbolic bases |
+| `power_rulekan_comp` | effective RuleKAN support bank | powered/ratio grammar with composed bases |
 
 ## Installation
 
-Python 3.12 is the default used by `setup.sh`.
+Python 3.12 is the default environment used by `setup.sh`.
+
+Core environment:
+
+```bash
+INSTALL_BENCHMARK_DEPS=0 ./setup.sh
+source .env/bin/activate
+python -m pytest -q
+```
+
+Full benchmark environment:
 
 ```bash
 ./setup.sh
@@ -39,33 +58,11 @@ source .env/bin/activate
 python -m pytest -q
 ```
 
-For the full benchmark environment, `setup.sh` installs the normal Python
-packages and also reconstructs the gitignored third-party source checkouts under
-`external/`: official Symbolic-KAN is pinned to commit `9481a82`, and PyOperon
-is cloned/built from source with the macOS runtime-path repair used by this
-project. RILS-ROLS is installed separately with build isolation disabled.
-These third-party directories should not be committed to RuleKAN.
-
-`benchmarks/requirements-benchmark.txt` contains only dependencies that are safe
-to install directly into the main Python-3.12 virtual environment. It does
-**not** by itself install RILS-ROLS, PyOperon, or Symbolic-KAN; use `./setup.sh`
-for the complete benchmark setup.
-
-The official SR-KAN implementation can also be installed on its own with:
-
-```bash
-python -m pip install -r benchmarks/requirements-srkan.txt
-```
-
-`benchmarks/requirements-modern-sr.txt` is likewise only the directly
-pip-installable subset for the additional modern baselines. uDSR/DSO is
-intentionally not installed into the main Python-3.12 environment because its
-upstream package pins legacy NumPy/Numba versions; run it from a separate
-compatible environment if that baseline is required.
+The full setup installs directly compatible benchmark packages and handles source-based dependencies used by selected baselines. The official Symbolic-KAN source is pinned to commit `9481a82`. PyOperon is built from source when required, and RILS-ROLS is installed without build isolation. uDSR/DSO is not installed into the Python-3.12 environment because its upstream dependency constraints require a separate compatible environment.
 
 ## Examples
 
-Run examples from the repository root as modules:
+Run examples from the repository root:
 
 ```bash
 python -m examples.example_sum_product_kan
@@ -74,40 +71,72 @@ python -m examples.example_simple --help
 python -m examples.example_feynman --help
 ```
 
-## Benchmark profiles
+The lower-level Python API is described in [`docs/reference/python-api.md`](docs/reference/python-api.md).
 
-The executable benchmark definition is `benchmarks/configs/default.yaml`. The shell entry point accepts a profile name followed by benchmark-runner options.
+## Analytic evaluation configuration
+
+The 30-task analytic evaluation uses six suites defined in `benchmarks/specs.py`:
+
+| Suite | Tasks | Capacity being tested |
+|---|---:|---|
+| `synthetic_core` | 6 | same-variable and cross-variable products, repeated factors, multi-term mixtures |
+| `fuzzy_rules` | 7 | gate-and-branch factorization, shared variables, nested and product-valued branches |
+| `power_expression_stress` | 4 | whole-expression squares, reciprocals, and ratios |
+| `nested_stress` | 5 | one additional analytic composition level |
+| `kan_canonical` | 3 | canonical KAN function-fitting targets |
+| `feynman` | 5 | compact physics-style equations |
+
+Each analytic task uses seeds `0,1,2` and `1600/400/500` train/validation/test observations. The controlled RuleKAN/KAN vocabulary is `core10` / `target_core`:
+
+```text
+x, x^2, 1/x, 1/x^2, sqrt, log, exp, sin, cos, tanh
+```
+
+The maximum factor order is `q=3`, the shared numerical width is `W=12`, and the research timeout is 2400 seconds per task/model/seed job. Compound shortcuts are excluded from `core10`; scope and composition must therefore be represented by the explicit Stage-3 mechanisms when needed.
+
+The 23-method main comparison is the `research_modern` profile's `main_comparison_models` evaluated on the six analytic suites above. An exact command is:
 
 ```bash
-./run_rulekan_benchmark.sh quick
+python -m benchmarks.run_benchmark \
+  --config benchmarks/configs/default.yaml \
+  --profile research_modern \
+  --suites fuzzy_rules,synthetic_core,power_expression_stress,nested_stress,kan_canonical,feynman \
+  --models rulekan,rulekan_comp,rulekan_adaptive,rulekan_fast,rulekan_omp_full,sisp,sisp_comp,power_rulekan,power_rulekan_comp,autosym,fastkan_autosym,gsr,fastkan_gsr,gmp,srkan,symbolic_kan,rils_rols,sindy,parfam,eql,pysr,operon,multkan_deep_gsr \
+  --seeds 0,1,2 \
+  --run-dir benchmark_results/analytic_30
+```
+
+`research_modern` without overrides schedules 32 tasks because it also includes two small real-data tasks, and it schedules 25 models because `pse` and `anfis` are available outside the 23-method main comparison. The profile named `paper` is a separate 19-task, 7-method KAN-extraction configuration using the `paper25` vocabulary.
+
+Common benchmark profiles resolve to:
+
+| Profile | Seeds | Tasks | Scheduled methods | Timeout/job |
+|---|---:|---:|---:|---:|
+| `quick` | 1 | 3 | 10 | 900 s |
+| `standard` | 3 | 28 | 12 | 2400 s |
+| `research` / `main` | 3 | 32 | 19 | 2400 s |
+| `research_modern` | 3 | 32 | 25 | 2400 s |
+| `fuzzy` | 3 | 7 | 13 | 2400 s |
+| `ablation` | 3 | 14 | 14 | 2400 s |
+| `width_sensitivity` | 3 | 8 | 12 | 5400 s |
+| `paper` | 3 | 19 | 7 | 5400 s |
+| `full` | 5 | 32 | 17 | 5400 s |
+
+Inspect the registered profiles, suites, and model identifiers with:
+
+```bash
+python -m benchmarks.run_benchmark --profile research --list
+```
+
+Run a profile through the shell entry point:
+
+```bash
 ./run_rulekan_benchmark.sh research
-./run_rulekan_benchmark.sh research_modern
-./run_rulekan_benchmark.sh ablation
 ./run_rulekan_benchmark.sh fuzzy
-./run_rulekan_benchmark.sh long_expression
-./run_rulekan_benchmark.sh width_sensitivity
+./run_rulekan_benchmark.sh ablation
 ```
 
-SINDy is complexity-controlled in the main comparison: `sindy` is **SINDy-12**, with at most 12 active non-bias library terms. The native-capacity unconstrained variant is appendix-only. Convenience commands are:
-
-```bash
-./run_sindy12_main.sh       # rerun only the main-paper SINDy-12 baseline
-```
-
-The main profiles include:
-
-| Profile | Seeds | Tasks | Methods | Purpose |
-|---|---:|---:|---:|---|
-| `quick` | 1 | 3 | 10 | smoke run |
-| `standard` | 3 | 28 | 12 | broad capability benchmark |
-| `research` | 3 | 32 | 19 | primary research matrix |
-| `research_modern` | 3 | 32 | 23 | research matrix + Symbolic-KAN, PSE, RILS-ROLS, uDSR |
-| `ablation` | 3 | 14 | 14 | RuleKAN component ablation |
-| `fuzzy` | 3 | 7 | 13 | fuzzy-rule benchmark |
-| `long_expression` | 3 | 2 | 19 | expression-length stress test |
-| `width_sensitivity` | 3 | 8 | 12 | shared-capacity width sweep |
-
-CPU is the default device. Examples:
+CPU is the default device. Device and worker overrides are accepted by the runner:
 
 ```bash
 ./run_rulekan_benchmark.sh research --device cpu --workers 8
@@ -115,93 +144,40 @@ CPU is the default device. Examples:
 ./run_rulekan_benchmark.sh research --device mps
 ```
 
-Direct Python execution supports task, method, and seed overrides:
-
-```bash
-python -m benchmarks.run_benchmark \
-  --config benchmarks/configs/default.yaml \
-  --profile research \
-  --models rulekan,rulekan_adaptive,power_rulekan,sisp \
-  --tasks mixed_rank4,power_ratio_product \
-  --seeds 0,1,2 \
-  --run-dir benchmark_results/example
-```
-
-List the registered profiles, suites, and methods with:
-
-```bash
-python -m benchmarks.run_benchmark --profile research --list
-```
-
-## Ablations
-
-There are two separate ablation entry points.
-
-The configured component ablation uses the benchmark harness and the `ablation` profile:
-
-```bash
-./run_rulekan_benchmark.sh ablation
-```
-
-It schedules 14 RuleKAN variants on 14 tasks for seeds `0,1,2`. It inherits the `research` data sizes, timeout, shared width, grid, symbolic library, and RuleKAN baseline configuration.
-
-The standalone one-factor-at-a-time Feynman ablation is:
-
-```bash
-python -m tools.ablation_ofat --help
-```
-
-It requires local Feynman text datasets under `symbolic_kan/datasets/` by default and writes CSV output under `benchmark_results/ofat_ablation/`. Full commands, dataset layout, parameter grids, and output columns are documented in [`docs/benchmarks/ablations.md`](docs/benchmarks/ablations.md).
-
-## Existing benchmark results
-
-The default run directory is:
-
-```text
-benchmark_results/current/
-```
-
-The preserved run can be inspected without executing experiments:
-
-```bash
-cat benchmark_results/current/STATUS.txt
-python tools/explain_benchmark_status.py benchmark_results/current
-```
-
-Aggregate tables and figures can be regenerated from the existing per-condition JSON records without retraining models:
+Benchmark output is created under `benchmark_results/` by default. A run directory contains per-condition JSON records, logs, aggregate CSV files, `summary.md`, `latest_results.md`, status diagnostics, and generated PDF figures. Aggregate outputs can be regenerated without retraining:
 
 ```bash
 python -m benchmarks.aggregate --run-dir benchmark_results/current
 ```
 
-The benchmark runner resumes by default and reuses completed condition records even when the repository build fingerprint has changed. The stored fingerprint remains available for provenance. Use `--no-reuse-completed` when you deliberately want strict same-build reruns after changing model or configuration code:
+Completed records are reusable during resume. Use `--no-reuse-completed` when completed jobs must be recomputed under the active source/configuration fingerprint.
 
-```bash
-./run_rulekan_benchmark.sh ablation --no-reuse-completed
-```
-
-This option affects completed records only; conditions that are absent or incomplete can still be scheduled.
-
-A run directory can contain:
+## Repository layout
 
 ```text
-runs/                         one JSON record per scheduled condition
-logs/                         stdout/stderr per condition
-figures/                      generated PDF figures
-benchmark_config_snapshot.yaml
-runs.csv
-summary.csv
-summary.md
-symbolic_runs.csv
-symbolic_summary.csv
-latest_results.md
-STATUS.txt
-incomplete_runs.csv
-failure_summary.csv
-skipped_incompatible_jobs.csv
-skipped_incompatible_jobs.json
+symbolic_kan/                 RuleKAN, RuleSISP, power/composition models, symbolic utilities
+benchmarks/                   task definitions, model adapters, configuration, runner, aggregation
+benchmarks/configs/           benchmark profiles and shared controls
+tools/                        analysis, diagnostics, and sensitivity commands
+examples/                     executable examples
+tests/                        unit and regression tests
+docs/                         method, benchmark, configuration, and API reference
+run_rulekan_benchmark.sh      benchmark shell entry point
+setup.sh                      environment bootstrap
+requirements.txt              core Python dependencies
 ```
+
+Runtime outputs such as `.env/`, `external/`, and `benchmark_results/` are created locally and are not required to be present in a source archive.
 
 ## Documentation
 
-Start with [`docs/getting-started.md`](docs/getting-started.md). The complete documentation index is in [`docs/README.md`](docs/README.md).
+- [`docs/README.md`](docs/README.md): method overview, terminology, and reference index
+- [`docs/getting-started.md`](docs/getting-started.md): installation and execution
+- [`docs/theory/model-class.md`](docs/theory/model-class.md): Stage-1, Stage-2, and Stage-3 model classes
+- [`docs/algorithms/numerical-training.md`](docs/algorithms/numerical-training.md): numerical interaction discovery and pruning
+- [`docs/algorithms/symbolic-search.md`](docs/algorithms/symbolic-search.md): support expansion, GMP, hard proposals, GSR/OMP, and SISP
+- [`docs/algorithms/power-rulekan.md`](docs/algorithms/power-rulekan.md): powers, reciprocals, and ratios
+- [`docs/algorithms/composition-rescue.md`](docs/algorithms/composition-rescue.md): bounded composition
+- [`docs/benchmarks/protocol.md`](docs/benchmarks/protocol.md): splits, controlled settings, profiles, execution, and reproducibility
+- [`docs/reference/configuration.md`](docs/reference/configuration.md): configuration schema
+- [`docs/reference/python-api.md`](docs/reference/python-api.md): Python API

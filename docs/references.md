@@ -44,7 +44,7 @@
 
 22. F. Sovrano, L. Losavio, G. Vilone, and M. Langheinrich. **In-Context Symbolic Regression for Robustness-Improved Kolmogorov-Arnold Networks.** arXiv:2603.15250, 2026. https://arxiv.org/abs/2603.15250
 
-23. M. A. Bühler and G. Guillén-Gosálbez. **SR-KAN: A Kolmogorov–Arnold Network guided symbolic regression framework.** *Computers & Chemical Engineering* 213:109721, 2026. https://doi.org/10.1016/j.compchemeng.2026.109721. Earlier preprint title: **KAN-SR: A Kolmogorov-Arnold Network Guided Symbolic Regression Framework**, arXiv:2509.10089.
+23. M. A. Bühler and G. Guillén-Gosálbez. **SR-KAN: A Kolmogorov–Arnold Network guided symbolic regression framework.** *Computers & Chemical Engineering* 213:109721, 2026. https://doi.org/10.1016/j.compchemeng.2026.109721.
 
 24. S. A. Faroughi, F. Mostajeran, A. Arzani, and S. Faroughi. **Symbolic-KAN: Kolmogorov-Arnold networks with discrete symbolic structure for interpretable learning.** *Journal of Computational Physics* 566:115223, 2026. https://doi.org/10.1016/j.jcp.2026.115223
 

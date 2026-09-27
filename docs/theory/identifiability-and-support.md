@@ -29,7 +29,7 @@ This is why the benchmark numerical RuleKAN stage uses distinct-variable product
 - numerical contribution strength;
 - whether the rule is already active in a hard model.
 
-Pre-pruning capture matters because a flexible numerical rule can become redundant after another rule refits around it even when its variable support remains useful for a later restricted symbolic decomposition.
+Pre-pruning capture matters because a flexible numerical rule can become redundant after another rule refits around it even when its variable support remains relevant to a later restricted symbolic decomposition.
 
 ## Support collapse
 
@@ -79,7 +79,7 @@ The combination of support collapse, multiplicity expansion and rank expansion i
 
 Same-variable factorization becomes meaningful only after the hypothesis class is restricted. The symbolic search evaluates the actual real-valued implementations of symbolic atoms such as `exp`, `sin`, `tanh`, `x^2` and protected rational/square-root forms. It does not replace those atoms with spline or RBF surrogates during symbolic takeover. A candidate `exp(x)*sin(x)` therefore competes against a finite set of unary symbolic candidates rather than against an unrestricted spline `h(x)` that can absorb the whole product. Domain-sensitive operators use the repository's protected real-valued implementations during numerical fitting while formula export retains their symbolic names.
 
-`gmp_symbolic_operator_preselection` is deliberately spline-free. Its factor values are evaluations of the configured symbolic operator functions with trainable affine input charts. This gives repeated-variable symbolic products an identifiable role relative to the discrete library.
+`gmp_symbolic_operator_preselection` is spline-free. Its factor values are evaluations of the configured symbolic operator functions with trainable affine input charts. This gives repeated-variable symbolic products an identifiable role relative to the discrete library.
 
 ## Optional numerical-to-symbolic manifold constraint
 
@@ -117,6 +117,6 @@ symbolic_effective_support_bank
 symbolic_effective_support_source
 ```
 
-The payload initially describes the primary numerically learned support bank. If validation selects the adaptive high-recall rescue, the payload is replaced atomically by that higher-recall but still numerically evidenced bank.
+The payload is initialized from the primary retained Stage-1 supports. Configured validation-gated support construction may add nonempty subsets, selected pre-pruning supports, or bounded gate-aware unions derived from Stage-1 evidence. If `RuleKAN Adaptive` selects its higher-recall rescue, the payload is replaced by the validation-selected augmented bank.
 
-All downstream RuleKAN-derived searches, including PowerRuleKAN transformed-power and ratio bases, use this effective support contract. The pre-selection `symbolic_learned_support_*` fields are diagnostics, not the downstream structural source of truth.
+All downstream RuleKAN-derived searches, including affine-partition recovery, composition search, and PowerRuleKAN transformed-power and ratio bases, use this effective support payload. The `symbolic_learned_support_*` fields retain the primary support diagnostics.
