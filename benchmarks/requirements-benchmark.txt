@@ -1,8 +1,8 @@
 # Main Python-3.12 benchmark environment.
 #
 # Packages needing special build handling (RILS-ROLS and PyOperon) are installed
-# by setup.sh rather than from this requirements file. Symbolic-KAN is a pinned
-# source checkout created by setup.sh under external/. uDSR/DSO is deliberately
+# by benchmarks/setup.sh rather than from this requirements file. Symbolic-KAN is a pinned
+# source checkout created by benchmarks/setup.sh under external/. uDSR/DSO is deliberately
 # excluded because its upstream package pins legacy NumPy/Numba versions that are
 # incompatible with the project's Python-3.12 environment.
 
@@ -11,15 +11,12 @@ pytest
 pmlb
 
 # General-purpose symbolic regression.
-pysr==2.2.1
+# PySR 2.2.1 is installed by benchmarks/setup.sh so setup can avoid importing
+# it; Julia discovery/provisioning is deferred until PySR is actually used.
 psrn
 
-# Build prerequisites used by the special installers in setup.sh.
+# Build prerequisite for the RILS-ROLS special installer in benchmarks/setup.sh.
 pybind11
-scikit-build-core>=0.11.6
-nanobind>=2.11.0
-cmake
-ninja
 
 # Official SR-KAN implementation.  Do not replace with the unrelated PyPI
 # package named `srkan`.

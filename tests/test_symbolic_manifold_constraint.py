@@ -1,7 +1,7 @@
 import copy
 import torch
 
-from symbolic_kan import (
+from rulekan import (
     SumProductKAN,
     SumProductTrainingStage,
     SumProductRegularization,

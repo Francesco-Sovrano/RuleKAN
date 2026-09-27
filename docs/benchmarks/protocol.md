@@ -265,10 +265,10 @@ python tools/explain_benchmark_status.py benchmark_results/current
 
 ## External symbolic-regression dependencies
 
-`benchmarks/requirements-benchmark.txt` contains dependencies that can be installed directly into the main Python-3.12 environment. `setup.sh` handles source-based or special-install dependencies used by selected baselines:
+`benchmarks/requirements-benchmark.txt` contains dependencies that can be installed directly into the Python-3.12 benchmark environment. `benchmarks/setup.sh` creates `.env-baselines` and handles source-based or special-install dependencies used by selected baselines:
 
 - Symbolic-KAN: pinned upstream checkout under `external/Pub_Symbolic_KANs`, commit `9481a82`;
-- PyOperon: source build of `v0.6.1` when needed;
+- PyOperon: the setup script attempts the binary wheel `pyoperon==0.6.1`; failure is reported without aborting the remaining benchmark setup. On macOS, `OPERON_MACOS_FIX=1` enables an optional repair of zlib/zstd runtime paths and the system libc++ dependency followed by ad-hoc re-signing;
 - RILS-ROLS: installation without build isolation.
 
 SR-KAN is installed from the authors' repository and is checked for the expected `regressor` and `SympyEvaluator` API. The package published on PyPI under the name `srkan` is not the implementation used by the benchmark adapter.

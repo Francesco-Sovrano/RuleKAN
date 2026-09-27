@@ -2,7 +2,7 @@ import tempfile
 
 import torch
 
-from symbolic_kan import KAN, RuleMaskProduct
+from rulekan import KAN, RuleMaskProduct
 
 
 def test_rule_mask_product_forward_and_backward():
@@ -150,7 +150,7 @@ def test_rule_mask_repeated_node_pruning_and_checkpoint():
 
 
 def test_create_dataset_preserves_normalization_metadata():
-    from symbolic_kan import create_dataset
+    from rulekan import create_dataset
 
     f = lambda x: (x[:, [0]] + 2.0 * x[:, [1]])
     data = create_dataset(

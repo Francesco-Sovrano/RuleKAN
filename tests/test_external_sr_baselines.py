@@ -85,12 +85,24 @@ def test_operon_wrapper_forces_fortran_layout_and_reports_formula(monkeypatch):
     monkeypatch.setitem(sys.modules, "pyoperon.sklearn", skl)
 
     spec, data = _tiny_data()
-    run = train_operon(spec, data, 5, {"population_size": 20, "generations": 3, "max_evaluations": 100})
+    run = train_operon(
+        spec,
+        data,
+        5,
+        {
+            "population_size": 20,
+            "generations": 3,
+            "max_evaluations": 100,
+            "max_time": 180.0,
+        },
+    )
     assert run.model_name == "operon"
     assert run.extras["formula"] == "0.5 * sin(x0)"
     assert run.extras["symbolic_backend"] == "operon"
     assert run.extras["symbolic_model_length"] == 7.0
     assert seen["fit_fortran"] and seen["predict_fortran"]
+    assert seen["kwargs"]["max_time"] == 180
+    assert isinstance(seen["kwargs"]["max_time"], int)
     assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
 
 
@@ -112,6 +124,26 @@ def test_srkan_wrapper_uses_official_api_and_reports_formula(monkeypatch):
         def __call__(self, x, params, mse=False):
             arr = np.asarray(x)
             return arr[:, 0]
+
+    # The core RuleKAN test environment intentionally does not depend on JAX.
+    # Stub the small part of the JAX API used by the wrapper so this remains a
+    # unit test of the SR-KAN adapter rather than an integration test.
+    jax_mod = types.ModuleType("jax")
+    jax_mod.__path__ = []
+    jax_mod.config = types.SimpleNamespace(update=lambda *args, **kwargs: None)
+
+    jnp_mod = types.ModuleType("jax.numpy")
+    jnp_mod.asarray = np.asarray
+
+    jr_mod = types.ModuleType("jax.random")
+    jr_mod.key = lambda seed: seed
+
+    jax_mod.numpy = jnp_mod
+    jax_mod.random = jr_mod
+
+    monkeypatch.setitem(sys.modules, "jax", jax_mod)
+    monkeypatch.setitem(sys.modules, "jax.numpy", jnp_mod)
+    monkeypatch.setitem(sys.modules, "jax.random", jr_mod)
 
     mod = types.ModuleType("srkan")
     mod.regressor = FakeRegressor
@@ -159,7 +191,7 @@ def test_symbolic_kan_wrapper_uses_official_training_and_exports_formula():
     root = Path(__file__).resolve().parents[1]
     upstream = root / "external" / "Pub_Symbolic_KANs" / "Exp_reaction_diffusion" / "symKanTraining.py"
     if not upstream.exists():
-        pytest.skip("official Symbolic-KAN checkout is created by setup.sh")
+        pytest.skip("official Symbolic-KAN checkout is created by benchmarks/setup.sh")
     spec, data = _tiny_data()
     run = train_symbolic_kan(
         spec, data, 5,
@@ -176,7 +208,7 @@ def test_symbolic_kan_wrapper_uses_official_training_and_exports_formula():
     assert run.extras["symbolic_backend"] == "symbolic_kan_official_github"
     assert run.extras["symbolic_kan_exact_official_code"] is True
     assert run.extras["symbolic_kan_training_routine"] == "train_regression_onehot"
-    assert run.extras["symbolic_kan_official_commit"] == "9481a82"
+    assert run.extras["symbolic_kan_official_commit"] == "9481a822e73e5a7520c6c0a425a8a402f2878c03"
     assert isinstance(run.extras["formula"], str) and run.extras["formula"]
     assert "test_rmse" in run.metrics and "symbolic_seconds" in run.metrics
     assert run.metrics["symbolic_export_vs_official_rmse"] < 1e-5

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rulekan"
+version = "0.1.0"
+description = "RuleKAN symbolic regression with support-conditioned sum-product search"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib",
+  "numpy",
+  "pandas",
+  "PyYAML",
+  "scikit-learn",
+  "sympy",
+  "torch",
+  "tqdm",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+examples = ["pykan", "scipy"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rulekan*"]
+
+[tool.setuptools.package-data]
+rulekan = ["assets/img/*.png"]

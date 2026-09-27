@@ -8,21 +8,21 @@ RuleKAN uses KAN-style trainable univariate functions as numerical factors but o
 
 ## RuleKAN model
 
-For input \(x\in\mathbb R^d\), the numerical model has the form
+For input $x\in\mathbb R^d$, the numerical model has the form
 
-\[
+$$
 f_\theta(x)=b+\sum_{r=1}^{R}a_r\,z_r(x),
 \qquad
 z_r(x)=\prod_{j=1}^{m_r}\phi_{rj}(x_{v_{rj}}),
-\]
+$$
 
-where each \(\phi_{rj}\) is a learned one-dimensional spline or Gaussian-RBF function. Continuous rule, factor, and variable-selection gates determine which structures remain active during training.
+where each $\phi_{rj}$ is a learned one-dimensional spline or Gaussian-RBF function. Continuous rule, factor, and variable-selection gates determine which structures remain active during training.
 
 After numerical fitting, the symbolic model uses the same additive rule form but replaces numerical factors with parameterized analytic functions
 
-\[
+$$
 g(\beta x+\gamma).
-\]
+$$
 
 Rule amplitudes absorb multiplicative factor scale, leaving operator family and affine input chart as the primary factor parameters.
 
@@ -53,11 +53,11 @@ Numerical pruning can remove a support after other terms adapt around it, so hig
 
 A numerical univariate edge can approximate a composite one-dimensional function such as
 
-\[
+$$
 h(x)=e^{-0.7x}\sin(2.4x).
-\]
+$$
 
-The numerical observation of one function of \(x\) does not identify whether the generating expression contains one symbolic factor or several symbolic factors of the same variable. Numerical same-variable factorization is therefore not structurally identifiable from function values alone.
+The numerical observation of one function of $x$ does not identify whether the generating expression contains one symbolic factor or several symbolic factors of the same variable. Numerical same-variable factorization is therefore not structurally identifiable from function values alone.
 
 RuleKAN records the support as `{x}` and handles repeated factors during symbolic grammar construction. A support containing one distinct variable may generate multiplicity candidates such as `(x)`, `(x,x)`, and higher repeated-variable tuples up to the configured order. This preserves the numerical support restriction while allowing the symbolic factorization to be richer than the numerical factor count.
 
@@ -65,9 +65,9 @@ RuleKAN records the support as `{x}` and handles repeated factors during symboli
 
 A single variable support can also contain several additive mechanisms. For example,
 
-\[
+$$
 0.3\tanh(2x)+0.55e^{-0.6x}\sin(2.5x)
-\]
+$$
 
 contains two additive terms with the same distinct-variable support `{x}`. RuleKAN therefore separates support identity from support rank. Symbolic rank continuation can allocate several independently parameterized rules to the same support when validation improves.
 
@@ -75,9 +75,9 @@ contains two additive terms with the same distinct-variable support `{x}`. RuleK
 
 Symbolic factors use affine input charts,
 
-\[
+$$
 g(\beta x+\gamma),
-\]
+$$
 
 rather than fixed raw operators. This is required for frequency, phase, shift, and scale parameters. It also introduces gauge equivalences: sine and cosine can differ by phase, even operators can identify opposite input slopes, odd operators can exchange sign with rule scale, and exponential shifts can exchange scale with the rule amplitude.
 
@@ -107,9 +107,9 @@ The effective bank begins from the primary retained supports and may include con
 
 A conditional expression such as
 
-\[
+$$
 (1-u)f_0+u f_1
-\]
+$$
 
 can be algebraically expanded into forms that have the same prediction error but hide the complementary gate pair. The affine-partition procedure searches compatible support-conditioned rule pairs and fits complementary identity charts directly. It does not require a separate `1-x` symbolic operator because both `x` and `1-x` are affine instances of the identity family.
 
@@ -123,12 +123,12 @@ The composition rescue changes symbolic depth, not the variable-support source. 
 
 PowerRuleKAN extends a RuleKAN base expression with integer exponents:
 
-\[
+$$
 f(x)=b+\sum_r a_r\prod_t B_{rt}(x)^{p_{rt}},
 \qquad p_{rt}\in\mathbb Z\setminus\{0\}.
-\]
+$$
 
-Each base \(B_{rt}\) is a complete support-conditioned RuleKAN expression. Negative powers are admitted only when reciprocal-domain checks pass. Ratio candidates combine positive- and negative-power bases. The ordinary RuleKAN solution is retained as an explicit `p=1` candidate.
+Each base $B_{rt}$ is a complete support-conditioned RuleKAN expression. Negative powers are admitted only when reciprocal-domain checks pass. Ratio candidates combine positive- and negative-power bases. The ordinary RuleKAN solution is retained as an explicit `p=1` candidate.
 
 ## Data separation
 

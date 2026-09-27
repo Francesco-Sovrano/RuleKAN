@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 
-from symbolic_kan.power_rulekan import PowerRuleKAN, inverse_power_target, safe_integer_power
+from rulekan.power_rulekan import PowerRuleKAN, inverse_power_target, safe_integer_power
 from benchmarks.models import _linearized_ratio_pilot, _select_power_atoms, _merge_power_atoms, _learned_symbolic_rules
 
 
@@ -103,8 +103,8 @@ def test_reciprocal_domain_selection_never_uses_test_coordinates():
 
 
 def test_power_rulekan_accepts_composed_symbolic_base():
-    from symbolic_kan.composition_rulekan import Depth2CompositionAtom, ComposedRuleKAN
-    from symbolic_kan.power_rulekan import harden_symbolic_base
+    from rulekan.composition_rulekan import Depth2CompositionAtom, ComposedRuleKAN
+    from rulekan.power_rulekan import harden_symbolic_base
 
     atom = Depth2CompositionAtom("sin", [[(0, "x")]])
     comp = ComposedRuleKAN(atom)

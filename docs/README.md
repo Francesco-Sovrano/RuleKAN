@@ -6,23 +6,23 @@ Two related symbolic searches are implemented. **RuleKAN** conditions its candid
 
 ## Symbolic model
 
-For inputs \(x=(x_1,\ldots,x_d)\), the Stage-2 symbolic language is
+For inputs $x=(x_1,\ldots,x_d)$, the Stage-2 symbolic language is
 
-\[
+$$
 f_{\mathrm{SP}}(x)=b+\sum_{r=1}^{R}a_r
 \prod_{s=1}^{m_r}\psi_{k_{rs}}(\beta_{rs}x_{j_{rs}}+\gamma_{rs}),
 \qquad m_r\le q.
-\]
+$$
 
 `b` is the global bias, `a_r` is the amplitude of additive term `r`, `m_r` is its number of factors, `j_rs` selects an input variable, and `psi_k` is a discrete analytic primitive. The affine chart `(beta, gamma)` is fitted continuously.
 
-A variable may occur several times in the same product. For example, a numerical Stage-1 edge may approximate \(h(x)\approx e^{-0.7x}\sin(2.4x)\), while Stage 2 receives only support `{x}` and can recover the two factors separately. Several additive symbolic terms may also use the same support.
+A variable may occur several times in the same product. For example, a numerical Stage-1 edge may approximate $h(x)\approx e^{-0.7x}\sin(2.4x)$, while Stage 2 receives only support `{x}` and can recover the two factors separately. Several additive symbolic terms may also use the same support.
 
 A two-branch fuzzy rule
 
-\[
+$$
 (1-g)u+gv
-\]
+$$
 
 already belongs to the sum-product language. Complementary gate parameterization, joint refitting, and bounded partition rescue retain explicit gate and branch roles when selected by validation.
 
@@ -32,10 +32,10 @@ already belongs to the sum-product language. Complementary gate parameterization
 
 The numerical model is a sum of product terms
 
-\[
+$$
 f_{\mathrm{num}}(x)=b+\sum_{r=1}^{W}\rho_r a_r
 \prod_{s=1}^{q}\left[1-m_{rs}+m_{rs}h_{rs}(x_{j_{rs}})\right],
-\]
+$$
 
 where `h_rs` is a learned spline or Gaussian-RBF univariate function, `rho_r` retains or removes a complete numerical term, and `m_rs` retains or removes one factor slot. Training uses relaxed gates followed by hardening, refitting, and iterative pruning.
 
@@ -49,9 +49,9 @@ Operator choice is handled by relaxed GMP screening followed by hard operator se
 
 RuleSISP skips Stage-1 support conditioning and enumerates every variable multiset through order `q`:
 
-\[
+$$
 |\mathcal G_S|=\binom{d+q}{q}-1.
-\]
+$$
 
 RuleKAN restricts the primary grammar to learned support classes and therefore reduces the structure search before analytic primitives are assigned.
 
@@ -59,18 +59,18 @@ RuleKAN restricts the primary grammar to learned support classes and therefore r
 
 `PowerRuleKAN` searches
 
-\[
+$$
 f(x)=b+\sum_{r=1}^{R_o}a_r\prod_t B_{rt}(x)^{p_{rt}},
 \qquad p_{rt}\in D\subset\mathbb Z\setminus\{0\},
-\]
+$$
 
 where each `B_rt` is a complete Stage-2 symbolic base. Negative powers represent reciprocals and ratios; positive powers compactly represent whole-expression powers under bounded term and factor limits.
 
 Composition variants permit one additional analytic function around selected bounded bases,
 
-\[
+$$
 C(x)=a\,g(\beta B(x)+\gamma)+d.
-\]
+$$
 
 This covers structures such as `sin(1 + x*y)` or `exp(x*y)` without unrestricted recursive tree search.
 

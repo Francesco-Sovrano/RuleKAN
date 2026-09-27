@@ -2,9 +2,9 @@
 
 Flat RuleKAN represents a sum of products of univariate symbolic factors,
 
-\[
+$$
 f(x)=b+\sum_r a_r\prod_s g_{rs}(x_{j_{rs}}),
-\]
+$$
 
 so increasing the number of rules increases additive rank but does not introduce functional composition. Expressions such as `tanh(sin(x))`, `sqrt(x0^2+x1^2)`, or `exp(sin(x0)+x1^2)` require an outer symbolic operator applied to an inner symbolic expression.
 
@@ -14,10 +14,10 @@ so increasing the number of rules increases additive rank but does not introduce
 
 One composition atom has the form
 
-\[
+$$
 C(x)=a\,g\!\left(\beta\left[c_0+\sum_{r=1}^{R_i} c_r
 \prod_s h_{rs}(\beta_{rs}x_{j_{rs}}+\gamma_{rs})\right]+\gamma\right)+d.
-\]
+$$
 
 The current rescue searches three small inner topologies:
 
@@ -45,9 +45,9 @@ Each retained family receives Adam refinement followed by LBFGS polishing of con
 
 A pure composition atom does not cover expressions such as
 
-\[
+$$
 \sin(x_0x_1)+0.2x_2^2.
-\]
+$$
 
 For the strongest composition candidates, the rescue can fit one additional flat unary RuleKAN correction to the composition residual and jointly repolish the combined expression. The correction is restricted by the same RuleKAN support contract; SISP-Comp remains structure-independent.
 

@@ -4,15 +4,15 @@
 
 With unrestricted univariate numerical functions,
 
-\[
+$$
 \phi(x)\psi(x)=h(x)
-\]
+$$
 
 for another univariate function `h`. A spline or RBF edge can therefore absorb a product such as
 
-\[
+$$
 e^{-0.7x}\sin(2.4x)
-\]
+$$
 
 into one numerical edge. The numerical factor count on one variable cannot be interpreted as the number of symbolic factors in the generating expression.
 
@@ -87,9 +87,9 @@ The numerical stage can optionally use `numeric_symbolic_manifold=true`. This do
 
 For an active numerical factor `h(x)`, `symbolic_manifold_distance` measures normalized distance to a union of single-family manifolds
 
-\[
+$$
 \{g_k(\beta x+\gamma):k=1,\ldots,K\}.
-\]
+$$
 
 Operator probabilities provide a differentiable continuation over the union. An augmented-Lagrangian-style penalty is applied when the distance exceeds the configured tolerance. During compression and consolidation, symbolic hardening anneals toward one family. For non-affine functions a temporary amplitude is permitted because factor scale is unidentifiable inside a product and can later be absorbed into the rule coefficient. Nonlinear output offsets are excluded.
 

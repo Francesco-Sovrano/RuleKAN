@@ -25,7 +25,7 @@ os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 import torch
 import torch.nn.functional as F
 
-from symbolic_kan.MultKAN import KAN
+from rulekan.MultKAN import KAN
 from benchmarks.device_utils import configure_torch_threads, default_cpu_workers, resolve_device
 
 try:
@@ -44,7 +44,7 @@ def get_args():
     )
 
     # Data
-    p.add_argument("--feynman_root", type=str, default="symbolic_kan/datasets")
+    p.add_argument("--feynman_root", type=str, default="rulekan/datasets")
     p.add_argument(
         "--feynman_variant",
         type=str,

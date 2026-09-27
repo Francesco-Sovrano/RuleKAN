@@ -7,7 +7,7 @@ from typing import Any, Dict, Sequence
 import torch
 from torch import nn
 
-from symbolic_kan.utils import SYMBOLIC_LIB
+from rulekan.utils import SYMBOLIC_LIB
 
 
 DEFAULT_EQL_UNARY_LIBRARY = (

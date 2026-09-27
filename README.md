@@ -6,13 +6,13 @@ The implementation separates numerical interaction discovery from symbolic facto
 
 A flat symbolic model has the form
 
-\[
+$$
 \hat y(x)=b+\sum_{r=1}^{R}a_r\prod_{s=1}^{m_r}
 \psi_{k_{rs}}(\beta_{rs}x_{j_{rs}}+\gamma_{rs}),
 \qquad m_r\le q,
-\]
+$$
 
-where each factor uses one analytic primitive \(\psi_k\), an affine input chart, and one input variable. Repeated occurrences of the same variable are allowed during symbolic search. This permits structures such as \(e^x\sin x\) even when the numerical stage represented the full product with one learned univariate function. A two-branch fuzzy rule, \((1-g)u+gv\), is also a sum of products and can be represented with explicit gate and branch roles.
+where each factor uses one analytic primitive $\psi_k$, an affine input chart, and one input variable. Repeated occurrences of the same variable are allowed during symbolic search. This permits structures such as $e^x\sin x$ even when the numerical stage represented the full product with one learned univariate function. A two-branch fuzzy rule, $(1-g)u+gv$, is also a sum of products and can be represented with explicit gate and branch roles.
 
 ## Method
 
@@ -40,35 +40,67 @@ The principal implemented variants are:
 
 ## Installation
 
-Python 3.12 is the default environment used by `setup.sh`.
-
-Core environment:
+RuleKAN is packaged as the `rulekan` Python distribution and requires Python 3.10 or later. Install the repository directly with:
 
 ```bash
-INSTALL_BENCHMARK_DEPS=0 ./setup.sh
-source .env/bin/activate
+python -m pip install .
+```
+
+For development, install it in editable mode with the test dependency:
+
+```bash
+python -m pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-Full benchmark environment:
+The package-only bootstrap creates `.env` and performs the editable install:
 
 ```bash
 ./setup.sh
 source .env/bin/activate
+```
+
+Run the package-only smoke example after installation:
+
+```bash
+python -m examples.quickstart
+```
+
+This example exercises RuleKAN forward/backward training without importing the benchmark harness, PySR, Julia, SR-KAN, or Operon.
+
+The public import namespace is `rulekan`:
+
+```python
+from rulekan import SumProductKAN, PowerRuleKAN
+```
+
+
+The benchmark baselines use a separate Python 3.12 environment because several dependencies require source checkouts or special build steps:
+
+```bash
+./benchmarks/setup.sh
+source .env-baselines/bin/activate
 python -m pytest -q
 ```
 
-The full setup installs directly compatible benchmark packages and handles source-based dependencies used by selected baselines. The official Symbolic-KAN source is pinned to commit `9481a82`. PyOperon is built from source when required, and RILS-ROLS is installed without build isolation. uDSR/DSO is not installed into the Python-3.12 environment because its upstream dependency constraints require a separate compatible environment.
+The benchmark setup installs RuleKAN in editable mode, installs the standard benchmark requirements, pins the official Symbolic-KAN source to commit `9481a82`, installs RILS-ROLS without build isolation, and installs PySR `2.2.1` without importing it during setup. PyOperon `0.6.1` is attempted from its binary wheel; if installation or import fails, setup reports the failure and continues without Operon. On macOS, `OPERON_MACOS_FIX=1 ./benchmarks/setup.sh` enables the optional Homebrew/rpath/code-signing repair for the published wheel. `INSTALL_OPERON=0`, `INSTALL_RILS_ROLS=0`, `INSTALL_SYMBOLIC_KAN=0`, and `INSTALL_PYSR=0` disable the corresponding components. uDSR/DSO requires a separate compatible environment. PySR may initialize or provision Julia when PySR is first used, not during this setup verification.
 
 ## Examples
 
-Run examples from the repository root:
+Run the RuleKAN-native examples from the repository root:
 
 ```bash
+python -m examples.quickstart
 python -m examples.example_sum_product_kan
 python -m examples.example_rulemask_product
-python -m examples.example_simple --help
 python -m examples.example_feynman --help
+```
+
+The legacy `example_simple` script depends on the external `pykan` package. Install the example extras before running it:
+
+```bash
+python -m pip install -e ".[examples]"
+python -m examples.example_simple --help
 ```
 
 The lower-level Python API is described in [`docs/reference/python-api.md`](docs/reference/python-api.md).
@@ -155,7 +187,7 @@ Completed records are reusable during resume. Use `--no-reuse-completed` when co
 ## Repository layout
 
 ```text
-symbolic_kan/                 RuleKAN, RuleSISP, power/composition models, symbolic utilities
+rulekan/                 RuleKAN, RuleSISP, power/composition models, symbolic utilities
 benchmarks/                   task definitions, model adapters, configuration, runner, aggregation
 benchmarks/configs/           benchmark profiles and shared controls
 tools/                        analysis, diagnostics, and sensitivity commands
@@ -163,11 +195,13 @@ examples/                     executable examples
 tests/                        unit and regression tests
 docs/                         method, benchmark, configuration, and API reference
 run_rulekan_benchmark.sh      benchmark shell entry point
-setup.sh                      environment bootstrap
-requirements.txt              core Python dependencies
+setup.sh                      RuleKAN package/development environment
+benchmarks/setup.sh           external baseline benchmark environment
+pyproject.toml               package metadata and core Python dependencies
+requirements.txt              convenience editable development install
 ```
 
-Runtime outputs such as `.env/`, `external/`, and `benchmark_results/` are created locally and are not required to be present in a source archive.
+Runtime outputs such as `.env/`, `.env-baselines/`, `external/`, and `benchmark_results/` are created locally and are not required to be present in a source archive.
 
 ## Documentation
 
@@ -179,5 +213,6 @@ Runtime outputs such as `.env/`, `external/`, and `benchmark_results/` are creat
 - [`docs/algorithms/power-rulekan.md`](docs/algorithms/power-rulekan.md): powers, reciprocals, and ratios
 - [`docs/algorithms/composition-rescue.md`](docs/algorithms/composition-rescue.md): bounded composition
 - [`docs/benchmarks/protocol.md`](docs/benchmarks/protocol.md): splits, controlled settings, profiles, execution, and reproducibility
+- [`benchmarks/README.md`](benchmarks/README.md): benchmark environment and external baseline installation
 - [`docs/reference/configuration.md`](docs/reference/configuration.md): configuration schema
 - [`docs/reference/python-api.md`](docs/reference/python-api.md): Python API

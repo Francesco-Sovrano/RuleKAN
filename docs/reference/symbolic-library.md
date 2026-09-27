@@ -4,11 +4,11 @@
 
 Each symbolic factor is represented as a symbolic operator with an affine input chart,
 
-\[
+$$
 g(\beta x+\gamma).
-\]
+$$
 
-Rule coefficients absorb multiplicative factor amplitudes. Identity factors are canonicalized as a single affine expression. Protected operators use numerically safe definitions implemented by `SYMBOLIC_LIB` in `symbolic_kan/sum_product_kan.py`.
+Rule coefficients absorb multiplicative factor amplitudes. Identity factors are canonicalized as a single affine expression. Protected operators use numerically safe definitions implemented by `SYMBOLIC_LIB` in `rulekan/sum_product_kan.py`.
 
 ## Compact library
 

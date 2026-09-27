@@ -2,45 +2,52 @@
 
 ## Requirements
 
-The repository uses Python and PyTorch. `setup.sh` defaults to Python 3.12 and
-creates a virtual environment at `.env`.
+RuleKAN requires Python 3.10 or later. The package bootstrap uses `python3` by default; the benchmark bootstrap uses Python 3.12 by default.
 
-For the complete supported benchmark setup:
+Install the library from a source checkout with:
+
+```bash
+python -m pip install .
+```
+
+For development, use an editable install with the test dependency:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+The installed distribution is named `rulekan`, and the preferred public import namespace is also `rulekan`:
+
+```python
+from rulekan import SumProductKAN, PowerRuleKAN
+```
+
+
+For a local package/development environment:
 
 ```bash
 ./setup.sh
 source .env/bin/activate
 ```
 
-The script also creates local third-party source checkouts used by selected benchmark baselines. It checks out official
-Symbolic-KAN at commit `9481a82` under `external/Pub_Symbolic_KANs`, clones and
-builds PyOperon under `external/pyoperon`, repairs its macOS runtime search path,
-and installs RILS-ROLS with build isolation disabled.
+`setup.sh` installs RuleKAN in editable mode with the development extra. Set `INSTALL_DEV=0` for runtime dependencies only, or `INSTALL_EXAMPLES=1` to install the example extra.
 
-Equivalent core-only installation:
+For the benchmark baselines, use the separate Python 3.12 environment:
 
 ```bash
-python3.12 -m venv .env
-source .env/bin/activate
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install -r requirements.txt
+./benchmarks/setup.sh
+source .env-baselines/bin/activate
 ```
 
-`benchmarks/requirements-benchmark.txt` and
-`benchmarks/requirements-modern-sr.txt` contain directly pip-installable
-dependencies. RILS-ROLS, PyOperon, and the pinned Symbolic-KAN source checkout
-are handled separately by `setup.sh`.
+`benchmarks/setup.sh` installs RuleKAN in editable mode and the benchmark dependency stack. Official Symbolic-KAN is pinned to commit `9481a82`; RILS-ROLS is installed without build isolation; and PySR `2.2.1` is installed without importing it during setup. PyOperon `0.6.1` is attempted from its binary wheel, but a failed install or import is reported without aborting the rest of setup. On macOS, rerun with `OPERON_MACOS_FIX=1` to apply the optional Homebrew/rpath/code-signing repair. `INSTALL_OPERON=0`, `INSTALL_RILS_ROLS=0`, `INSTALL_SYMBOLIC_KAN=0`, and `INSTALL_PYSR=0` skip the corresponding components.
 
-The package named `srkan` on PyPI is not the dependency used by the benchmark.
-To install only the official SR-KAN implementation expected by the adapter:
+The package named `srkan` on PyPI is not the dependency used by the benchmark. To install only the official SR-KAN implementation expected by the adapter:
 
 ```bash
 python -m pip install -r benchmarks/requirements-srkan.txt
 ```
 
-uDSR/DSO is not installed into the main Python-3.12 environment because its
-upstream dependency constraints require older NumPy/Numba versions. Use a
-separate compatible environment for model identifier `udsr`.
+uDSR/DSO is not installed into the main Python-3.12 benchmark environment because its upstream dependency constraints require older NumPy/Numba versions. Use a separate compatible environment for model identifier `udsr`.
 
 ## Verify the checkout
 
@@ -50,7 +57,7 @@ Run the test suite from the repository root:
 python -m pytest -q
 ```
 
-The `run_rulekan_benchmark.sh` wrapper executes the tests automatically unless `SKIP_TESTS=1` is set. Direct `python -m benchmarks.run_benchmark` commands do not run the test suite.
+The `run_rulekan_benchmark.sh` wrapper uses `.env-baselines` by default and executes the tests automatically unless `SKIP_TESTS=1` is set. Direct `python -m benchmarks.run_benchmark` commands do not run the test suite.
 
 ## Run an example
 
@@ -59,13 +66,14 @@ Examples are Python modules under `examples/`:
 ```bash
 python -m examples.example_sum_product_kan
 python -m examples.example_rulemask_product
+python -m examples.example_feynman --help
 ```
 
-Command-line examples expose their options with `--help`:
+`examples.example_simple` depends on the external `pykan` package. Install the optional example dependencies before running it:
 
 ```bash
+python -m pip install -e ".[examples]"
 python -m examples.example_simple --help
-python -m examples.example_feynman --help
 ```
 
 Run module commands from the repository root so local imports and relative data paths resolve consistently.
@@ -151,9 +159,9 @@ A typical invocation is:
 
 ```bash
 python -m tools.ablation_ofat \
-  --feynman_root symbolic_kan/datasets \
+  --feynman_root rulekan/datasets \
   --feynman_variant Feynman_with_units \
-  --equations_csv symbolic_kan/datasets/FeynmanEquations.csv \
+  --equations_csv rulekan/datasets/FeynmanEquations.csv \
   --max_datasets 10 \
   --dataset_select_seed 123 \
   --device cpu \

@@ -4,9 +4,9 @@
 
 Regression evaluation reports RMSE and normalized RMSE. For a test target vector `y_test`,
 
-\[
+$$
 \mathrm{NRMSE}=\frac{\mathrm{RMSE}}{\operatorname{sd}(y_{\mathrm{test}})}.
-\]
+$$
 
 The benchmark stores numerical-stage and symbolic-stage values separately where a method has both stages. Aggregate code derives common `numeric_rmse`, `numeric_nrmse`, `symbolic_rmse`, and `symbolic_nrmse` columns across method families.
 

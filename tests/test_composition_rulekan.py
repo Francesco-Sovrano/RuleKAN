@@ -3,8 +3,8 @@ import torch
 from torch import nn
 
 from benchmarks.specs import TASKS, make_synthetic_data
-from symbolic_kan import SumProductKAN
-from symbolic_kan.composition_rulekan import ComposedRuleKAN, depth2_composition_rescue
+from rulekan import SumProductKAN
+from rulekan.composition_rulekan import ComposedRuleKAN, depth2_composition_rescue
 
 
 class _Zero(nn.Module):
@@ -137,7 +137,7 @@ def test_depth2_composition_rescue_recovers_nested_cross_oscillator_with_periodi
 
 
 def test_composition_defaults_rebuild_removed_compounds_from_elementary_outer_ops():
-    from symbolic_kan.composition_rulekan import _DEFAULT_OUTER, _DEFAULT_UNARY
+    from rulekan.composition_rulekan import _DEFAULT_OUTER, _DEFAULT_UNARY
     removed = {"gaussian", "log1p_sq", "sqrt1p_sq", "inv1p_sq"}
     assert removed.isdisjoint(_DEFAULT_UNARY)
     assert {"exp", "sqrt", "log", "1/x"}.issubset(_DEFAULT_OUTER)

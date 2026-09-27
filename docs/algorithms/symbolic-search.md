@@ -21,9 +21,9 @@ Primary RuleKAN structures use retained supports. Support augmentation may add n
 
 A candidate factor is evaluated as
 
-\[
+$$
 g(\beta x_j+\gamma),
-\]
+$$
 
 with rule amplitude carrying the multiplicative scale. Symbolic search works on actual symbolic operator evaluations. Numerical splines/RBFs do not remain in the final model.
 
@@ -37,16 +37,16 @@ Inputs in the benchmark are standardized. A symbolic chart may be simple in the 
 
 If
 
-\[
+$$
 u=\frac{z-z_{\min}}{z_{\max}-z_{\min}}
-\]
+$$
 
 and an operator seed is `g(beta*u+gamma)`, its equivalent chart on standardized coordinate `z` is
 
-\[
+$$
 \beta'=\frac{\beta}{z_{\max}-z_{\min}},\qquad
 \gamma'=\gamma-\frac{\beta z_{\min}}{z_{\max}-z_{\min}}.
-\]
+$$
 
 Raw and data-unit starts are both retained. This supports same-variable factorization and affine membership/complement gates.
 
@@ -54,9 +54,9 @@ Raw and data-unit starts are both retained. This supports same-variable factoriz
 
 `gmp_symbolic_operator_preselection` jointly optimizes soft operator choices for a supplied set of variable structures. A relaxed factor has the form
 
-\[
+$$
 S(x_j)=\sum_{k=1}^{K}\pi_k g_k(\beta_k x_j+\gamma_k).
-\]
+$$
 
 Temperature annealing and optional straight-through/Gumbel modes concentrate the operator distribution. GMP is a proposal mechanism; final symbolic commitment uses hard symbolic operators and end-to-end refitting.
 
@@ -100,9 +100,9 @@ It passes the same allowed-support set to affine-partition and downstream suppor
 
 For `d` variables and maximum order `q`, SISP considers
 
-\[
+$$
 \binom{d+q}{q}-1
-\]
+$$
 
 variable multisets before operator tuples are considered. SISP therefore isolates the effect of Stage-1 support conditioning while retaining the same Stage-2 factor language.
 

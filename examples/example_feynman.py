@@ -6,11 +6,11 @@ from contextlib import contextmanager
 
 import torch
 
-from symbolic_kan.MultKAN import KAN, GatedSymbolicLayer
-#from symbolic_kan import create_dataset
-#from symbolic_kan.utils import list_feynman_dataset_names, load_pmlb_dataset_as_kan
+from rulekan.MultKAN import KAN, GatedSymbolicLayer
+#from rulekan import create_dataset
+#from rulekan.utils import list_feynman_dataset_names, load_pmlb_dataset_as_kan
 
-from symbolic_kan.MultKAN import KAN as BaseKAN
+from rulekan.MultKAN import KAN as BaseKAN
 
 import os
 import glob

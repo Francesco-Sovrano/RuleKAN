@@ -4,7 +4,7 @@ from __future__ import annotations
 
 The benchmark uses a pinned checkout of
 ``sfaroughi3/Pub_Symbolic_KANs`` under ``external/Pub_Symbolic_KANs``. The
-checkout is reconstructed by ``setup.sh`` and is intentionally gitignored.
+checkout is reconstructed by ``benchmarks/setup.sh`` and is intentionally gitignored.
 This module does *not* reimplement Symbolic-KAN. It loads the
 upstream supervised-regression code from ``Exp_reaction_diffusion`` and calls
 its ``train_regression_onehot`` routine directly.

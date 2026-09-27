@@ -2,11 +2,11 @@
 
 PowerRuleKAN starts from the canonical effective RuleKAN support bank and searches an outer grammar over complete symbolic bases. A powered model can contain terms of the form
 
-\[
+$$
 a\prod_t B_t(x)^{p_t},\qquad p_t\in\mathbb Z\setminus\{0\},
-\]
+$$
 
-where every base \(B_t\) is itself a support-conditioned RuleKAN symbolic expression. Negative powers are reciprocals and are subject to domain-margin checks.
+where every base $B_t$ is itself a support-conditioned RuleKAN symbolic expression. Negative powers are reciprocals and are subject to domain-margin checks.
 
 ## Outer power search
 

@@ -1,5 +1,5 @@
 # Python-3.12-compatible modern SR dependencies.
-# Run ../../setup.sh (or ./setup.sh from the repository root) for the complete
+# Run ./benchmarks/setup.sh from the repository root for the complete
 # installation because RILS-ROLS and PyOperon need special build handling, and Symbolic-KAN is checked out under external/.
 
 psrn
@@ -10,8 +10,8 @@ cmake
 ninja
 
 # Intentionally omitted here:
-#   rils-rols  -> setup.sh installs with --no-build-isolation
-#   pyoperon   -> setup.sh builds v0.6.1 from source and fixes macOS rpaths
+#   rils-rols  -> benchmarks/setup.sh installs with --no-build-isolation
+#   pyoperon   -> benchmarks/setup.sh builds v0.6.1 from source and fixes macOS rpaths
 #   uDSR/DSO  -> incompatible with the main Python-3.12 venv; use Python 3.9
 
 # Sparse-library and parametric-family symbolic-regression baselines.

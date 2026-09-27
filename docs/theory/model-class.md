@@ -8,10 +8,10 @@ Let `x=(x_0,...,x_{d-1})` be the input. `W` denotes numerical rule capacity and 
 
 The numerical model is
 
-\[
+$$
 f_{\mathrm{num}}(x)=b+\sum_{r=1}^{W}q_r a_r
 \prod_{s=1}^{q}\left[(1-m_{rs})+m_{rs}h_{rs}(x_{j_{rs}})\right].
-\]
+$$
 
 `q_r` (the implementation counterpart of the paper notation `rho_r`) is a differentiable rule-presence gate, `m_rs` is a factor-presence gate, `j_rs` is a categorical variable choice, and `h_rs` is a learned univariate numerical edge. Ordinary RuleKAN uses cubic B-spline edge banks. RuleKAN-RBF replaces only the numerical edge bank with Gaussian RBFs.
 
@@ -23,11 +23,11 @@ The `SumProductKAN` class can represent repeated-variable numerical products whe
 
 The final symbolic model has the form
 
-\[
+$$
 f_{\mathrm{sym}}(x)=b+\sum_{r=1}^{R}a_r
 \prod_{s=1}^{m_r}g_{rs}(\beta_{rs}x_{j_{rs}}+\gamma_{rs}),
 \qquad m_r\le q.
-\]
+$$
 
 Each `g_rs` is a discrete symbolic operator from the configured symbolic library. Discrete support, multiplicity and operator identities are hard by the end of symbolic search. Continuous affine input parameters, rule amplitudes and bias are refitted against data.
 
@@ -35,30 +35,30 @@ Each `g_rs` is a discrete symbolic operator from the configured symbolic library
 
 For a non-affine operator, the canonical factor is
 
-\[
+$$
 g(\beta x+\gamma).
-\]
+$$
 
 A separate per-factor output amplitude is redundant inside a product because
 
-\[
+$$
 \prod_s c_s g_s(\cdot)=\left(\prod_s c_s\right)\prod_s g_s(\cdot),
-\]
+$$
 
 so those amplitudes can be absorbed into the rule coefficient `a_r`. Nonlinear output offsets are not part of the final factor gauge because multiplying shifted factors introduces lower-order terms and makes a single symbolic factor encode an implicit sum.
 
 The identity family is special. A general affine expression
 
-\[
+$$
 a(bx+c)+d
-\]
+$$
 
 is exactly folded into one affine identity chart
 
-\[
+$$
 \beta x+\gamma,
 \quad \beta=ab,\quad \gamma=ac+d.
-\]
+$$
 
 This makes `x`, `1-x`, signed affine gates and ordinary linear factors members of one canonical operator family.
 
@@ -66,17 +66,17 @@ This makes `x`, `1-x`, signed affine gates and ordinary linear factors members o
 
 For
 
-\[
+$$
 g_1(x_0)g_2(x_0)g_3(x_2),
-\]
+$$
 
 the support is `{0,2}` and the multiplicity tuple is `(0,0,2)`.
 
 Support rank is separate from multiplicity. Several additive rules may have identical support and multiplicity but different symbolic factors or affine parameters. For example,
 
-\[
+$$
 \sin(x)\cos(x)e^y\cos(y)+\tan(x)\cos(x)e^y\sin(y)
-\]
+$$
 
 contains two independent rules with support `{x,y}` and multiplicity `(x,x,y,y)`.
 
@@ -86,30 +86,30 @@ This separation is necessary because a flexible numerical rule does not uniquely
 
 For a primary Stage-1 support bank `S_1,...,S_U`, RuleKAN begins with the symbolic structures
 
-\[
+$$
 \mathcal G_R=
 \bigcup_{u=1}^{U}
 \{z:\operatorname{supp}(z)=S_u,\ |z|\le q\}.
-\]
+$$
 
 All variables in a learned support must remain present in each expanded structure; only their multiplicities may change. For a support of size `s`, the number of positive multiplicity patterns through order `q` is
 
-\[
+$$
 \sum_{m=s}^{q}\binom{m-1}{s-1}=\binom{q}{s}.
-\]
+$$
 
 SISP instead uses the complete variable-multiset grammar
 
-\[
+$$
 \mathcal G_S=
 \{z:1\le |z|\le q,\ z_i\in\{0,\ldots,d-1\}\}/\text{permutation},
-\]
+$$
 
 with
 
-\[
+$$
 |\mathcal G_S|=\binom{d+q}{q}-1.
-\]
+$$
 
 RuleKAN and SISP therefore share the same factor language but differ in the source of admissible variable structures. RuleKAN may also apply bounded, validation-gated support augmentation derived from Stage-1 evidence: nonempty support subsets, selected pre-pruning supports, and gate-aware unions. These operations do not enumerate arbitrary supports. SISP performs the unrestricted multiset enumeration through order `q`.
 
@@ -121,10 +121,10 @@ The number of numerical rules is not an upper bound on the number of final symbo
 
 PowerRuleKAN extends the outer grammar to
 
-\[
+$$
 f(x)=b+\sum_{r=1}^{R_o}a_r\prod_t B_{rt}(x)^{p_{rt}},
 \qquad p_{rt}\in D\subset\mathbb Z\setminus\{0\},
-\]
+$$
 
 where every `B_rt` is a fully symbolic RuleKAN sum-product expression. A reciprocal is a negative integer power of a complete base; a ratio is a product of positive- and negative-power bases. The ordinary RuleKAN model is the `p=1` subcase.
 

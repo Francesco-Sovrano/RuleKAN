@@ -2,7 +2,7 @@
 
 The benchmark harness registers the following additional regression baselines:
 
-- `symbolic_kan`: official `sfaroughi3/Pub_Symbolic_KANs` source pinned by `setup.sh` to commit `9481a82`. The adapter calls `Exp_reaction_diffusion/symKanTraining.py::train_regression_onehot`, supplies benchmark train/validation arrays, evaluates the hardened symbolic network, and serializes the discrete structure for structural scoring.
+- `symbolic_kan`: official `sfaroughi3/Pub_Symbolic_KANs` source pinned by `benchmarks/setup.sh` to commit `9481a82`. The adapter calls `Exp_reaction_diffusion/symKanTraining.py::train_regression_onehot`, supplies benchmark train/validation arrays, evaluates the hardened symbolic network, and serializes the discrete structure for structural scoring.
 - `pse`: PSE/PSRN through the public `psrn` package and `PSRN_Regressor` API.
 - `rils_rols`: RILS-ROLS through the public `rils-rols` package.
 - `udsr`: unified Deep Symbolic Regression through the DSO PyTorch package, with the `poly`/LINEAR token and GP meld enabled by the adapter.
@@ -38,7 +38,7 @@ Directly pip-installable dependencies are listed in:
 python -m pip install -r benchmarks/requirements-modern-sr.txt
 ```
 
-The complete environment, including source-based dependencies, is installed by `./setup.sh`. uDSR requires a separate environment compatible with the upstream DSO dependency pins.
+The complete baseline environment, including source-based dependencies, is installed by `./benchmarks/setup.sh` and defaults to `.env-baselines`. uDSR requires a separate environment compatible with the upstream DSO dependency pins.
 
 Inspect the profile and vocabulary mapping with:
 

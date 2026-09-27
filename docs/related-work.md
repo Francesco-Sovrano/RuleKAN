@@ -66,9 +66,9 @@ Takagi-Sugeno fuzzy systems combine local consequents under fuzzy memberships [1
 
 The fuzzy benchmark tasks use continuous complementary partitions of the form
 
-\[
+$$
 (1-u)f_0+u f_1.
-\]
+$$
 
 RuleKAN's affine-partition mechanism is not a separate fuzzy inference engine. It is a canonical symbolic refactor inside already learned supports. The identity operator's affine gauge represents both `u` and `1-u`; the two charts are tied to remain exact complements while branch operators are optimized. This addresses algebraic non-uniqueness between the partition form and distributive alternatives such as `f0-u*f0+u*f1`.
 

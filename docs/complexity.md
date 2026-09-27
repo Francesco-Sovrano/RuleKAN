@@ -25,11 +25,11 @@
 
 A dense numerical step evaluates approximately `W*q*d` candidate one-dimensional edges. With basis cost `B`,
 
-\[
+$$
 T_{num}=O(T_nNWqdB),
 \qquad
 S_{num}=O(WqdB).
-\]
+$$
 
 Hard variable selection avoids this full cost in some later discrete paths, but the expression above is the comparable dense training term.
 
@@ -37,21 +37,21 @@ Hard variable selection avoids this full cost in some later discrete paths, but 
 
 The number of unordered variable multisets of orders one through `q` is
 
-\[
+$$
 S(d,q)=\binom{d+q}{q}-1.
-\]
+$$
 
 The total number of factor positions across this grammar is
 
-\[
+$$
 A_S(d,q)=d\binom{d+q}{q-1}.
-\]
+$$
 
 A differentiable GMP pass over the full grammar has the comparable screening term
 
-\[
+$$
 T_{SISP,GMP}=O\!\left(T_gN_sK\,d\binom{d+q}{q-1}\right).
-\]
+$$
 
 For fixed `q`, structural growth is `Theta(d^q)`.
 
@@ -59,29 +59,29 @@ For fixed `q`, structural growth is `Theta(d^q)`.
 
 A learned support of size `s_u` contributes
 
-\[
+$$
 \binom{q}{s_u}
-\]
+$$
 
 multiplicity patterns through order `q`. The full learned-support bank has
 
-\[
+$$
 B_R(q)=\sum_{u=1}^{U}\binom{q}{s_u}
-\]
+$$
 
 structures.
 
 Its factor-position count is
 
-\[
+$$
 A_R(q)=\sum_{u=1}^{U}s_u\binom{q+1}{s_u+1}.
-\]
+$$
 
 SC-GMP generally instantiates only a subset with `F_R` active factor slots, giving
 
-\[
+$$
 T_{RuleKAN,SC}=O(T_gN_sKF_R).
-\]
+$$
 
 A wider support rescue approaches the `A_R(q)` term. Bounded nonempty subsets, selected pre-pruning supports, and gate-aware unions may enter the effective bank when derived from Stage-1 evidence; arbitrary support enumeration is reserved for SISP.
 
@@ -91,9 +91,9 @@ For one `m`-factor structure and a library of size `K`, exhaustive operator tupl
 
 The hard-refit contribution is approximately
 
-\[
+$$
 O(M\tau C_{sym}),
-\]
+$$
 
 where `C_sym` is the cost of evaluating and differentiating the current symbolic model.
 

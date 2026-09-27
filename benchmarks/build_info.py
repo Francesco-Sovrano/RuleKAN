@@ -9,7 +9,7 @@ def benchmark_build_fingerprint(root: Path, config_path: Path | None = None) -> 
     root = Path(root).resolve()
     h = hashlib.sha256()
     candidates = []
-    for rel in ("symbolic_kan", "benchmarks", "external/Pub_Symbolic_KANs"):
+    for rel in ("rulekan", "benchmarks", "external/Pub_Symbolic_KANs"):
         base = root / rel
         if base.exists():
             candidates.extend(sorted(p for p in base.rglob("*.py") if "__pycache__" not in p.parts))

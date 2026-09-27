@@ -4,15 +4,15 @@
 
 A two-branch fuzzy conditional with membership `u` can be written
 
-\[
+$$
 (1-u)f_{0}(x)+u f_{1}(x).
-\]
+$$
 
 The identity symbolic family already represents both gates. If `u=\beta z+\gamma`, exact complementarity is
 
-\[
+$$
 1-u=-\beta z+(1-\gamma).
-\]
+$$
 
 No separate `1-x` operator is required.
 
@@ -20,9 +20,9 @@ No separate `1-x` operator is required.
 
 The same conditional can be written distributively, for example
 
-\[
+$$
 f_0(x)-u f_0(x)+u f_1(x).
-\]
+$$
 
 A generic additive symbolic search can fit this expression nearly perfectly while obscuring the two complementary branches. Prediction loss alone therefore does not uniquely determine the partition representation.
 
@@ -49,15 +49,15 @@ This prevents early prediction-only pruning from eliminating a mechanically simp
 
 During continuous refitting, one affine identity gate is free and its paired gate is constrained to remain its exact complement. If the base gate is
 
-\[
+$$
 u(z)=\beta z+\gamma,
-\]
+$$
 
 the paired gate is always
 
-\[
+$$
 1-u(z)=-\beta z+(1-\gamma).
-\]
+$$
 
 The shared chart can move away from the finite-sample min/max initialization, but optimization cannot destroy complementarity. Branch operators, branch affine parameters, rule scales and bias remain trainable.
 
@@ -69,10 +69,10 @@ The search first performs a short continuous refinement over a family-diverse be
 
 Let `M_best` be the lowest validation MSE among the incumbent and partition candidates. A candidate is treated as predictively equivalent when
 
-\[
+$$
 M\le M_{best}(1+\epsilon_{rel})+
 (\epsilon_{nrmse}\,\sigma_y)^2.
-\]
+$$
 
 Within this validation-defined band, the selector prefers lower internal cancellation and then lower symbolic description complexity. The cancellation term measures total absolute rule contribution plus absolute bias relative to target scale. This discriminates compact partition forms from algebraically equivalent fits that depend on large cancelling contributions.
 

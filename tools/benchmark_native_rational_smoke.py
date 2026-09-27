@@ -1,7 +1,7 @@
 import json, time
 import torch
-from symbolic_kan.sum_product_kan import SumProductKAN, SumProductTrainingStage, SumProductRegularization, fit_sum_product_kan
-from symbolic_kan.rational_sum_product_kan import RationalSumProductKAN, fit_rational_sum_product_kan
+from rulekan.sum_product_kan import SumProductKAN, SumProductTrainingStage, SumProductRegularization, fit_sum_product_kan
+from rulekan.rational_sum_product_kan import RationalSumProductKAN, fit_rational_sum_product_kan
 
 
 def task_quadratic_den(x):

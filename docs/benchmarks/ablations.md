@@ -128,7 +128,7 @@ python -m tools.ablation_ofat --help
 The default root is:
 
 ```text
-symbolic_kan/datasets/
+rulekan/datasets/
 ```
 
 The selected variant must be one of:
@@ -143,7 +143,7 @@ bonus_with_units
 The expected layout is:
 
 ```text
-symbolic_kan/datasets/
+rulekan/datasets/
 ├── FeynmanEquations.csv              optional formula metadata
 └── Feynman_with_units/
     ├── I.10.7
@@ -200,9 +200,9 @@ The script builds 15 OFAT configurations: five width values, four regularization
 
 ```bash
 python -m tools.ablation_ofat \
-  --feynman_root symbolic_kan/datasets \
+  --feynman_root rulekan/datasets \
   --feynman_variant Feynman_with_units \
-  --equations_csv symbolic_kan/datasets/FeynmanEquations.csv \
+  --equations_csv rulekan/datasets/FeynmanEquations.csv \
   --device cpu \
   --max_datasets 10 \
   --dataset_select_seed 123 \
@@ -216,7 +216,7 @@ The output parent directory is created automatically.
 ```bash
 python -m tools.ablation_ofat \
   --datasets feynman_I_10_7 feynman_I_12_1 \
-  --feynman_root symbolic_kan/datasets \
+  --feynman_root rulekan/datasets \
   --feynman_variant Feynman_with_units \
   --output_csv benchmark_results/ofat_ablation/selected.csv
 ```

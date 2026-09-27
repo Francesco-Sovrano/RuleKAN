@@ -34,9 +34,9 @@ from typing import Callable, Dict, List, Sequence, Tuple
 import numpy as np
 import torch
 
-from symbolic_kan import KAN, create_dataset
-from symbolic_kan.rule_mask import RuleMaskProduct
-from symbolic_kan.utils import SYMBOLIC_LIB
+from rulekan import KAN, create_dataset
+from rulekan.rule_mask import RuleMaskProduct
+from rulekan.utils import SYMBOLIC_LIB
 
 TensorFn = Callable[[torch.Tensor], torch.Tensor]
 

@@ -30,7 +30,7 @@ import math
 import torch
 from tqdm.auto import tqdm
 
-from symbolic_kan import (
+from rulekan import (
     SumProductKAN,
     SumProductRegularization,
     SumProductTrainingStage,

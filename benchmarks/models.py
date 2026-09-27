@@ -14,9 +14,9 @@ import numpy as np
 import torch
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, r2_score
 
-from symbolic_kan import KAN
-from symbolic_kan.MLP import MLP
-from symbolic_kan import (
+from rulekan import KAN
+from rulekan.MLP import MLP
+from rulekan import (
     SumProductKAN,
     default_sum_product_schedule,
     fit_sum_product_kan,
@@ -56,8 +56,8 @@ from .symbolic_kan_baseline import (
 )
 from .sindy_baseline import fit_static_sindy, sindy_formula, DEFAULT_SINDY_LIBRARY
 from .eql_baseline import EQLDivRegressor, fit_eql_model_selection, eql_formula, DEFAULT_EQL_UNARY_LIBRARY
-from symbolic_kan.composition_rulekan import ComposedRuleKAN, depth2_composition_rescue
-from symbolic_kan.sum_product_kan import _fully_symbolic_continuous_refit
+from rulekan.composition_rulekan import ComposedRuleKAN, depth2_composition_rescue
+from rulekan.sum_product_kan import _fully_symbolic_continuous_refit
 
 
 # Exact 25-form operator library used by the paper-comparison baselines.
@@ -3646,19 +3646,29 @@ def train_srkan(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, A
         import jax
         import jax.numpy as jnp
         import jax.random as jr
-        import srkan as srkan_pkg
-        regressor = getattr(srkan_pkg, "regressor", None)
-        evaluator_cls = getattr(srkan_pkg, "SympyEvaluator", None)
-        if regressor is None or evaluator_cls is None:
-            raise ImportError(
-                "imported package named 'srkan' is not the official symbolic-regression SR-KAN API"
-            )
-    except Exception as exc:
+    except ImportError as exc:
         raise ImportError(
-            "Official SR-KAN baseline requires the Bühler & Guillén-Gosálbez repository, not the "
-            "unrelated PyPI package named srkan. Install with "
-            "`python -m pip install 'git+https://github.com/marcobuhler/SR-KAN.git'`."
+            "The SR-KAN benchmark requires JAX. Install the benchmark environment with "
+            "`./benchmarks/setup.sh`."
         ) from exc
+
+    try:
+        import srkan as srkan_pkg
+    except ImportError as exc:
+        raise ImportError(
+            "The SR-KAN benchmark requires the official Bühler & Guillén-Gosálbez "
+            "SR-KAN implementation. Install the benchmark environment with "
+            "`./benchmarks/setup.sh`."
+        ) from exc
+
+    regressor = getattr(srkan_pkg, "regressor", None)
+    evaluator_cls = getattr(srkan_pkg, "SympyEvaluator", None)
+    if regressor is None or evaluator_cls is None:
+        raise ImportError(
+            "The imported `srkan` package does not expose the official SR-KAN "
+            "symbolic-regression API. Remove the unrelated PyPI package named `srkan` "
+            "and install the benchmark environment with `./benchmarks/setup.sh`."
+        )
 
     jax.config.update("jax_enable_x64", True)
     x_train, y_train, x_test = _external_sr_arrays(data)
@@ -3857,7 +3867,7 @@ def train_operon(spec: TaskSpec, data: BenchmarkData, seed: int, cfg: Dict[str, 
         "random_state": int(seed),
     }
     if cfg.get("max_time") is not None:
-        kwargs["max_time"] = float(cfg["max_time"])
+        kwargs["max_time"] = int(cfg["max_time"])
 
     model = SymbolicRegressor(**kwargs)
     t0 = time.perf_counter()

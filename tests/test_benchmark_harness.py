@@ -78,7 +78,7 @@ def test_attached_paper_baselines_are_registered():
 
 
 def test_paper_gsr_edge_policy_aliases():
-    from symbolic_kan.MultKAN import _norm_policy
+    from rulekan.MultKAN import _norm_policy
     assert _norm_policy("importance_desc") == "best"
     assert _norm_policy("importance_asc") == "worst"
     assert _norm_policy("highest") == "best"
@@ -90,10 +90,11 @@ def test_evolutionary_sr_dependencies_and_primary_profiles_are_registered():
     from benchmarks.models import TRAINERS
     root = Path(__file__).resolve().parents[1]
     req = (root / "benchmarks" / "requirements-benchmark.txt").read_text()
-    assert "pysr==2.2.1" in req
+    setup = (root / "benchmarks" / "setup.sh").read_text()
+    assert "pysr==2.2.1" in req or "pysr==2.2.1" in setup
     assert "pyoperon==0.6.1" not in req
-    assert "PyOperon" in req  # setup.sh handles the source build / macOS rpath repair
-    assert "pyoperon" in (root / "setup.sh").read_text().lower()
+    assert "PyOperon" in req  # benchmarks/setup.sh handles the source build / macOS rpath repair
+    assert "pyoperon" in (root / "benchmarks" / "setup.sh").read_text().lower()
     assert {"pysr", "operon"}.issubset(TRAINERS)
     cfg = yaml.safe_load((root / "benchmarks" / "configs" / "default.yaml").read_text())
     for profile in ("quick", "standard", "full", "research", "fuzzy"):
@@ -158,7 +159,7 @@ def test_fuzzy_tasks_generate_finite_membership_routing_targets():
 def test_fuzzy_recovery_scorer_recognizes_exact_if_else_rule_pair():
     import torch
     from benchmarks.models import fuzzy_rule_recovery_scores
-    from symbolic_kan.sum_product_kan import SumProductKAN
+    from rulekan.sum_product_kan import SumProductKAN
 
     spec = TASKS["fuzzy_ite_cross"]
     data = make_synthetic_data(spec, seed=11, train_n=96, val_n=24, test_n=32)
@@ -386,7 +387,7 @@ def test_deep_multkan_late_multiplication_baselines_are_registered():
 
 def test_deep_multkan_architecture_multiplies_after_first_hidden_transform():
     import torch
-    from symbolic_kan import KAN
+    from rulekan import KAN
     model = KAN(
         width=[2, [3, 0], [2, 1], 1],
         grid=3, k=2, seed=0, auto_save=False, save_act=False, device="cpu",
@@ -783,7 +784,7 @@ def test_fuzzy_recovery_scorer_is_gate_gauge_and_sincos_phase_invariant():
     import torch
     from benchmarks.models import fuzzy_rule_recovery_scores
     from benchmarks.specs import TASKS, make_synthetic_data
-    from symbolic_kan.sum_product_kan import SumProductKAN
+    from rulekan.sum_product_kan import SumProductKAN
 
     spec = TASKS["fuzzy_ite_cross"]
     data = make_synthetic_data(spec, seed=13, train_n=96, val_n=24, test_n=32)
@@ -923,8 +924,8 @@ def test_v82_power_rulekan_cannot_read_stale_primary_support_fields_directly():
 def test_power_rulekan_fuzzy_recovery_scores_final_p1_structure_and_rejects_powered_credit():
     import torch
     from benchmarks.models import fuzzy_rule_recovery_scores
-    from symbolic_kan.sum_product_kan import SumProductKAN
-    from symbolic_kan.power_rulekan import PowerRuleKAN
+    from rulekan.sum_product_kan import SumProductKAN
+    from rulekan.power_rulekan import PowerRuleKAN
 
     spec = TASKS["fuzzy_ite_cross"]
     data = make_synthetic_data(spec, seed=23, train_n=96, val_n=24, test_n=32)
@@ -1410,7 +1411,7 @@ def test_long_expression_targets_are_finite_and_nontrivial():
 
 def test_complementary_two_rule_rescue_recovers_same_variable_family_without_expanding_supports():
     import torch
-    from symbolic_kan.sum_product_kan import (
+    from rulekan.sum_product_kan import (
         SumProductKAN,
         _make_fully_symbolic_shell,
         complementary_two_rule_symbolic_rescue,
@@ -1639,7 +1640,7 @@ def test_research_modern_vocabulary_matching_across_symbolic_baselines():
 
 def test_setup_reconstructs_gitignored_external_symbolic_kan_checkout():
     root = Path(__file__).resolve().parents[1]
-    setup = (root / "setup.sh").read_text()
+    setup = (root / "benchmarks" / "setup.sh").read_text()
     gitignore = (root / ".gitignore").read_text()
 
     assert 'SYMBOLIC_KAN_COMMIT="${SYMBOLIC_KAN_COMMIT:-9481a82}"' in setup
@@ -1654,14 +1655,34 @@ def test_setup_reconstructs_gitignored_external_symbolic_kan_checkout():
 def test_setup_keeps_special_binary_baselines_out_of_plain_requirements():
     root = Path(__file__).resolve().parents[1]
     req = (root / "benchmarks" / "requirements-benchmark.txt").read_text()
-    setup = (root / "setup.sh").read_text()
+    setup = (root / "benchmarks" / "setup.sh").read_text()
 
-    assert "rils-rols" not in [ln.strip() for ln in req.splitlines() if ln and not ln.startswith("#")]
-    assert "pyoperon" not in [ln.strip() for ln in req.splitlines() if ln and not ln.startswith("#")]
+    requirements = [
+        ln.strip()
+        for ln in req.splitlines()
+        if ln.strip() and not ln.startswith("#")
+    ]
+
+    assert "rils-rols" not in requirements
+    assert not any(line.startswith("pyoperon") for line in requirements)
     assert "deep-symbolic-optimization-pytorch" not in req
+
+    # RILS-ROLS still requires its special installation path.
     assert "--no-build-isolation rils-rols" in setup
-    assert "python script/dependencies.py" in setup
-    assert "patch_pyoperon_macos_rpath" in setup
+
+    # PyOperon is installed separately from the plain requirements file. Its
+    # wheel/import is allowed to fail without aborting the remaining baseline
+    # setup, and macOS repair is explicitly opt-in.
+    assert 'PYOPERON_VERSION="${PYOPERON_VERSION:-0.6.1}"' in setup
+    assert 'INSTALL_OPERON="${INSTALL_OPERON:-1}"' in setup
+    assert 'OPERON_MACOS_FIX="${OPERON_MACOS_FIX:-0}"' in setup
+    assert "install_pyoperon()" in setup
+    assert "report_pyoperon_failure()" in setup
+    assert "repair_pyoperon_macos()" in setup
+    assert "--only-binary=:all:" in setup
+
+    # The previous PyOperon source-build path is intentionally not used.
+    assert "python script/dependencies.py" not in setup
 
 
 def test_external_fuzzy_backfill_unscorable_formula_is_zero_not_nan():

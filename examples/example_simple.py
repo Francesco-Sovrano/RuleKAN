@@ -49,8 +49,8 @@ from contextlib import contextmanager
 
 import torch
 
-from symbolic_kan.MultKAN import KAN, GatedSymbolicLayer
-from symbolic_kan import create_dataset
+from rulekan.MultKAN import KAN, GatedSymbolicLayer
+from rulekan import create_dataset
 
 from kan.MultKAN import KAN as BaseKAN
 
@@ -361,7 +361,7 @@ def main():
 	args = get_args()
 	print(args)
 
-	use_old_kan_package = False  # set True only if you want to force using `kan.MultKAN.KAN` instead of `symbolic_kan.MultKAN.KAN`
+	use_old_kan_package = False  # set True only if you want to force using `kan.MultKAN.KAN` instead of `rulekan.MultKAN.KAN`
 
 	# Build list of targets
 	targets = []

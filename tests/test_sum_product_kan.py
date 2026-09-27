@@ -1,6 +1,6 @@
 import torch
 
-from symbolic_kan.sum_product_kan import (
+from rulekan.sum_product_kan import (
     SumProductKAN,
     SumProductRegularization,
 )
@@ -121,7 +121,7 @@ def test_forward_is_finite_for_symbolic_library():
 
 
 def test_conformal_pruning_can_remove_exactly_zero_rule():
-    from symbolic_kan.sum_product_kan import conformal_prune_sum_product_rules
+    from rulekan.sum_product_kan import conformal_prune_sum_product_rules
     model = SumProductKAN(
         in_dim=1,
         n_rules=2,
@@ -173,7 +173,7 @@ def test_factor_presence_gate_controls_order_differentiably():
 
 
 def test_conformal_refit_pruning_removes_zero_rule():
-    from symbolic_kan.sum_product_kan import conformal_refit_prune_sum_product_rules
+    from rulekan.sum_product_kan import conformal_refit_prune_sum_product_rules
     model = _hard_identity_symbolic_model()
     # Expand to a 2-rule model with one exactly zero contribution.
     model = SumProductKAN(
@@ -222,7 +222,7 @@ def test_discretize_is_function_preserving_at_hard_endpoint():
 
 
 def test_joint_rule_gsr_recovers_exact_identity_product():
-    from symbolic_kan.sum_product_kan import in_context_symbolic_rule_gsr
+    from rulekan.sum_product_kan import in_context_symbolic_rule_gsr
     model = SumProductKAN(
         in_dim=2, n_rules=1, max_factors=2, grid=4, k=2,
         symbolic_library=("x",), min_order=1, seed=5,
@@ -257,7 +257,7 @@ def test_joint_rule_gsr_recovers_exact_identity_product():
 
 
 def test_symbolic_copy_compaction_removes_zero_contribution_rule():
-    from symbolic_kan.sum_product_kan import compact_sumproduct_for_symbolic
+    from rulekan.sum_product_kan import compact_sumproduct_for_symbolic
     model = SumProductKAN(
         in_dim=1, n_rules=2, max_factors=1, grid=4, k=2,
         symbolic_library=("x",), seed=6,
@@ -286,7 +286,7 @@ def test_symbolic_copy_compaction_removes_zero_contribution_rule():
 
 
 def test_mandatory_symbolic_matching_pursuit_has_zero_splines():
-    from symbolic_kan.sum_product_kan import mandatory_symbolic_matching_pursuit
+    from rulekan.sum_product_kan import mandatory_symbolic_matching_pursuit
     torch.manual_seed(0)
     model = SumProductKAN(
         in_dim=2, n_rules=1, max_factors=2, grid=6, k=2,
@@ -333,7 +333,7 @@ def test_mandatory_symbolic_matching_pursuit_has_zero_splines():
 
 
 def test_numeric_grid_refinement_is_finite_and_denser():
-    from symbolic_kan.sum_product_kan import refine_sumproduct_numeric_grid
+    from rulekan.sum_product_kan import refine_sumproduct_numeric_grid
     model = SumProductKAN(
         in_dim=2, n_rules=2, max_factors=2, grid=6, k=2,
         symbolic_library=("x",), seed=3,
@@ -388,7 +388,7 @@ def test_two_symbolic_functions_can_multiply_on_same_input():
 
 
 def test_numeric_init_can_forbid_self_products_while_symbolic_bank_keeps_them():
-    from symbolic_kan.sum_product_kan import symbolic_structure_bank
+    from rulekan.sum_product_kan import symbolic_structure_bank
     model = SumProductKAN(
         in_dim=5, n_rules=15, max_factors=2, grid=4, k=2,
         symbolic_library=("x",), allow_self_products=False, seed=19,
@@ -410,7 +410,7 @@ def test_numeric_init_can_forbid_self_products_while_symbolic_bank_keeps_them():
 
 
 def test_gmp_preselection_prunes_symbol_tuples_and_finds_self_product_atoms():
-    from symbolic_kan.sum_product_kan import gmp_symbolic_operator_preselection
+    from rulekan.sum_product_kan import gmp_symbolic_operator_preselection
     torch.manual_seed(0)
     x = torch.linspace(-1.5, 1.5, 320).unsqueeze(1)
     y = 0.4 * torch.exp(-0.65 * x) * torch.sin(2.35 * x)
@@ -453,7 +453,7 @@ def test_example_target_contains_nontrivial_same_variable_product_term():
 
 
 def test_fully_symbolic_template_canonicalizes_factor_output_affine():
-    from symbolic_kan.sum_product_kan import _install_symbolic_template
+    from rulekan.sum_product_kan import _install_symbolic_template
     model = SumProductKAN(
         in_dim=1, n_rules=1, max_factors=2, grid=4, k=2,
         symbolic_library=("exp", "sin"), allow_self_products=True, seed=23,
@@ -477,7 +477,7 @@ def test_fully_symbolic_template_canonicalizes_factor_output_affine():
 def test_protected_log_sympy_export_matches_logabs_semantics():
     import numpy as np
     import sympy as sp
-    from symbolic_kan.utils import SYMBOLIC_LIB
+    from rulekan.utils import SYMBOLIC_LIB
 
     sx = sp.symbols("x", real=True)
     expr = SYMBOLIC_LIB["log"][1](sx)
@@ -495,7 +495,7 @@ def test_protected_log_sympy_export_matches_logabs_semantics():
 
 def test_composition_export_keeps_abs_inside_protected_log():
     import sympy as sp
-    from symbolic_kan.composition_rulekan import Depth2CompositionAtom
+    from rulekan.composition_rulekan import Depth2CompositionAtom
 
     atom = Depth2CompositionAtom("cos", [[(0, "log")]], dtype=torch.float64)
     with torch.no_grad():
@@ -507,7 +507,7 @@ def test_composition_export_keeps_abs_inside_protected_log():
 
 
 def test_sumproduct_symbolic_library_audit_passes_default_atoms():
-    from symbolic_kan.sum_product_kan import audit_sumproduct_symbolic_library
+    from rulekan.sum_product_kan import audit_sumproduct_symbolic_library
     report = audit_sumproduct_symbolic_library()
     assert report
     assert all(bool(info.get("ok", False)) for info in report.values())
@@ -533,7 +533,7 @@ def test_factor_l0_tracks_optional_factor_gate_not_masked_identity_channel():
 
 
 def test_prune_to_stability_removes_dead_rule_and_persists_mask():
-    from symbolic_kan.sum_product_kan import prune_numeric_structure_to_stability
+    from rulekan.sum_product_kan import prune_numeric_structure_to_stability
     torch.manual_seed(5)
     model = SumProductKAN(
         in_dim=1, n_rules=2, max_factors=1, grid=4, k=2,
@@ -565,7 +565,7 @@ def test_prune_to_stability_removes_dead_rule_and_persists_mask():
 
 
 def test_prune_to_stability_rolls_back_destructive_deletion():
-    from symbolic_kan.sum_product_kan import prune_numeric_structure_to_stability
+    from rulekan.sum_product_kan import prune_numeric_structure_to_stability
     model = SumProductKAN(
         in_dim=2, n_rules=2, max_factors=1, grid=4, k=2,
         symbolic_library=("x",), allow_self_products=False, seed=17,
@@ -591,7 +591,7 @@ def test_prune_to_stability_rolls_back_destructive_deletion():
 
 
 def test_gsr_affine_rmse_projection_handles_nonzero_candidate_mean():
-    from symbolic_kan.sum_product_kan import _best_affine_residual_rmse
+    from rulekan.sum_product_kan import _best_affine_residual_rmse
     x = torch.linspace(-2.0, 2.0, 101)
     h = 3.0 + torch.sin(1.7 * x)
     residual = -1.2 + 2.5 * h
@@ -604,7 +604,7 @@ def test_gsr_affine_rmse_projection_handles_nonzero_candidate_mean():
 def test_default_symbolic_formula_matches_torch_forward_for_each_atom():
     import numpy as np
     import sympy as sp
-    from symbolic_kan.sum_product_kan import _DEFAULT_SYMBOLIC_LIBRARY
+    from rulekan.sum_product_kan import _DEFAULT_SYMBOLIC_LIBRARY
     x = torch.linspace(-1.5, 1.5, 121).unsqueeze(1)
     sx = sp.symbols("x")
     for name in _DEFAULT_SYMBOLIC_LIBRARY:
@@ -630,7 +630,7 @@ def test_default_symbolic_formula_matches_torch_forward_for_each_atom():
 
 
 def test_fully_symbolic_shell_reopens_numerically_pruned_masks():
-    from symbolic_kan.sum_product_kan import _make_fully_symbolic_shell
+    from rulekan.sum_product_kan import _make_fully_symbolic_shell
     model = SumProductKAN(
         in_dim=2, n_rules=3, max_factors=2, grid=4, k=2,
         symbolic_library=("x", "sin"), allow_self_products=False, seed=41,
@@ -675,7 +675,7 @@ def test_fast_discrete_symbolic_forward_matches_dense_forward():
 
 
 def test_drop_negligible_symbolic_rules_removes_tiny_term_without_hurting_fit():
-    from symbolic_kan.sum_product_kan import drop_negligible_symbolic_rules
+    from rulekan.sum_product_kan import drop_negligible_symbolic_rules
     model = SumProductKAN(
         in_dim=1, n_rules=2, max_factors=1, grid=4, k=2,
         symbolic_library=("x", "sin"), allow_self_products=False, seed=47,
@@ -711,7 +711,7 @@ def test_drop_negligible_symbolic_rules_removes_tiny_term_without_hurting_fit():
 
 
 def test_rulekan_fast_rbf_edge_bank_forward_and_gradients_are_finite():
-    from symbolic_kan.sum_product_kan import FastRBFEdgeBank
+    from rulekan.sum_product_kan import FastRBFEdgeBank
     bank = FastRBFEdgeBank(
         in_dim=3, out_dim=8, num=9, grid_range=(-2.0, 2.0),
         base_fun=torch.nn.Identity(), device="cpu",
@@ -732,7 +732,7 @@ def test_rulekan_fast_rbf_edge_bank_forward_and_gradients_are_finite():
 
 
 def test_sumproduct_rbf_basis_uses_same_rulekan_structure_api():
-    from symbolic_kan.sum_product_kan import FastRBFEdgeBank
+    from rulekan.sum_product_kan import FastRBFEdgeBank
     model = SumProductKAN(
         in_dim=2, n_rules=4, max_factors=2, grid=7, k=3,
         numeric_basis="rbf", allow_self_products=False, seed=53,
@@ -747,7 +747,7 @@ def test_sumproduct_rbf_basis_uses_same_rulekan_structure_api():
 
 
 def test_rulekan_fast_rbf_refinement_preserves_function_on_training_points():
-    from symbolic_kan.sum_product_kan import refine_sumproduct_numeric_grid
+    from rulekan.sum_product_kan import refine_sumproduct_numeric_grid
     model = SumProductKAN(
         in_dim=2, n_rules=3, max_factors=1, grid=6, k=3,
         numeric_basis="rbf", allow_self_products=False, seed=59,
@@ -769,7 +769,7 @@ def test_rulekan_fast_rbf_refinement_preserves_function_on_training_points():
 
 
 def test_rule_contribution_redundancy_detects_duplicate_rules():
-    from symbolic_kan.sum_product_kan import rule_contribution_redundancy
+    from rulekan.sum_product_kan import rule_contribution_redundancy
     model = SumProductKAN(
         in_dim=1, n_rules=2, max_factors=1, grid=4, k=2,
         symbolic_library=("x",), seed=61,
@@ -792,7 +792,7 @@ def test_rule_contribution_redundancy_detects_duplicate_rules():
 
 
 def test_orthogonal_rule_scale_refit_solves_joint_coefficients():
-    from symbolic_kan.sum_product_kan import orthogonal_rule_scale_refit
+    from rulekan.sum_product_kan import orthogonal_rule_scale_refit
     model = SumProductKAN(
         in_dim=2, n_rules=2, max_factors=1, grid=4, k=2,
         symbolic_library=("x",), seed=67,
@@ -842,7 +842,7 @@ def test_contribution_graph_regularizer_penalizes_duplicate_contributions():
 
 
 def test_prune_to_stability_can_be_bounded_to_one_accepted_deletion():
-    from symbolic_kan.sum_product_kan import prune_numeric_structure_to_stability
+    from rulekan.sum_product_kan import prune_numeric_structure_to_stability
     model = SumProductKAN(
         in_dim=1, n_rules=3, max_factors=1, grid=4, k=2,
         symbolic_library=("x",), seed=83,
@@ -867,7 +867,7 @@ def test_prune_to_stability_can_be_bounded_to_one_accepted_deletion():
 
 
 def test_gmp_screening_scales_with_library_size_and_preserves_explicit_overrides():
-    from symbolic_kan.sum_product_kan import scaled_gmp_screening_sizes
+    from rulekan.sum_product_kan import scaled_gmp_screening_sizes
 
     assert scaled_gmp_screening_sizes(11) == (3, 5, 4)
     assert scaled_gmp_screening_sizes(14) == (4, 7, 6)
@@ -877,7 +877,7 @@ def test_gmp_screening_scales_with_library_size_and_preserves_explicit_overrides
 
 
 def test_gmp_symbolic_rng_is_independent_of_global_torch_rng_state():
-    from symbolic_kan.sum_product_kan import gmp_symbolic_operator_preselection
+    from rulekan.sum_product_kan import gmp_symbolic_operator_preselection
 
     x = torch.linspace(-1.0, 1.0, 64).unsqueeze(1)
     y = (torch.sin(1.3 * x[:, 0]) + 0.2 * x[:, 0] ** 2).unsqueeze(1)
@@ -908,7 +908,7 @@ def test_gmp_symbolic_rng_is_independent_of_global_torch_rng_state():
 
 
 def test_gmp_structure_rng_is_invariant_to_structure_order():
-    from symbolic_kan.sum_product_kan import gmp_symbolic_operator_preselection
+    from rulekan.sum_product_kan import gmp_symbolic_operator_preselection
 
     x0 = torch.linspace(-1.0, 1.0, 48)
     x = torch.stack([x0, torch.cos(1.7 * x0)], dim=1)
@@ -934,7 +934,7 @@ def test_gmp_structure_rng_is_invariant_to_structure_order():
 
 
 def test_gmp_auto_policy_is_structure_and_budget_aware():
-    from symbolic_kan.sum_product_kan import _resolve_gmp_local_policy
+    from rulekan.sum_product_kan import _resolve_gmp_local_policy
 
     assert _resolve_gmp_local_policy(
         (0, 1), steps=25, identity_chart="auto", atom_backward_normalization="auto"
@@ -951,7 +951,7 @@ def test_gmp_auto_policy_is_structure_and_budget_aware():
 
 
 def test_gmp_auto_raw_repeated_product_matches_explicit_raw_initialization():
-    from symbolic_kan.sum_product_kan import gmp_symbolic_operator_preselection
+    from rulekan.sum_product_kan import gmp_symbolic_operator_preselection
 
     x = torch.linspace(-1.5, 1.5, 128).unsqueeze(1)
     y = 0.4 * torch.exp(-0.65 * x) * torch.sin(2.35 * x)
@@ -980,7 +980,7 @@ def test_gmp_auto_raw_repeated_product_matches_explicit_raw_initialization():
 
 
 def test_gmp_data_dual_is_latent_and_collapsed_before_topk():
-    from symbolic_kan.sum_product_kan import gmp_symbolic_operator_preselection
+    from rulekan.sum_product_kan import gmp_symbolic_operator_preselection
 
     torch.manual_seed(0)
     x = torch.randn(96, 2)
@@ -1006,7 +1006,7 @@ def test_gmp_data_dual_is_latent_and_collapsed_before_topk():
 
 
 def test_identity_canonicalization_folds_output_affine_exactly():
-    from symbolic_kan.sum_product_kan import _canonical_symbolic_affine
+    from rulekan.sum_product_kan import _canonical_symbolic_affine
 
     # a * (b*x + c) + d == (a*b)*x + (a*c+d).  The old symbolic
     # installation path discarded a,d and therefore warped fitted fuzzy gates.
@@ -1020,7 +1020,7 @@ def test_identity_canonicalization_folds_output_affine_exactly():
 def test_interaction_shape_screen_preserves_fuzzy_branch_families():
     from benchmarks.models import TARGET_CORE_SYMBOLIC_LIBRARY
     from benchmarks.specs import TASKS, make_synthetic_data
-    from symbolic_kan.sum_product_kan import interaction_shape_symbolic_shortlists
+    from rulekan.sum_product_kan import interaction_shape_symbolic_shortlists
 
     data = make_synthetic_data(TASKS["fuzzy_ite_cross"], seed=0, train_n=1200, val_n=200, test_n=200)
     else_shape = interaction_shape_symbolic_shortlists(
@@ -1038,7 +1038,7 @@ def test_interaction_shape_screen_preserves_fuzzy_branch_families():
 
 def test_tiny_symbolic_cleanup_accepts_absolute_target_tolerance():
     import torch
-    from symbolic_kan.sum_product_kan import SumProductKAN, drop_negligible_symbolic_rules
+    from rulekan.sum_product_kan import SumProductKAN, drop_negligible_symbolic_rules
 
     model = SumProductKAN(
         in_dim=1, n_rules=2, max_factors=1, grid=4, k=2,
@@ -1078,7 +1078,7 @@ def test_tiny_symbolic_cleanup_accepts_absolute_target_tolerance():
 
 def test_recursive_partition_rescue_recovers_depth2_fuzzy_tree():
     import torch
-    from symbolic_kan.sum_product_kan import (
+    from rulekan.sum_product_kan import (
         SumProductKAN, _make_fully_symbolic_shell,
         recursive_partition_symbolic_rescue,
     )
@@ -1132,7 +1132,7 @@ def test_recursive_partition_rescue_recovers_depth2_fuzzy_tree():
 
 def test_complementary_two_rule_rescue_recovers_same_variable_fuzzy_rule():
     import torch
-    from symbolic_kan.sum_product_kan import (
+    from rulekan.sum_product_kan import (
         SumProductKAN, _make_fully_symbolic_shell,
         complementary_two_rule_symbolic_rescue,
     )

@@ -3,7 +3,7 @@
 ## `SumProductKAN`
 
 ```python
-from symbolic_kan import SumProductKAN
+from rulekan import SumProductKAN
 ```
 
 Constructor:
@@ -62,7 +62,7 @@ symbolic_manifold_distance(...)
 ## Numerical training
 
 ```python
-from symbolic_kan import default_sum_product_schedule, fit_sum_product_kan
+from rulekan import default_sum_product_schedule, fit_sum_product_kan
 ```
 
 `default_sum_product_schedule(base_lr=2e-3, symbolic=True)` returns `SumProductTrainingStage` objects. The benchmark calls it with `symbolic=False` and performs the later symbolic search separately.
@@ -82,7 +82,7 @@ history = fit_sum_product_kan(
 ## Support evidence and symbolic grammar
 
 ```python
-from symbolic_kan import (
+from rulekan import (
     capture_numeric_support_evidence,
     learned_numeric_support_classes,
     learned_structure_symbolic_bank,
@@ -102,7 +102,7 @@ bank = learned_structure_symbolic_bank(classes, max_factors=model.max_factors)
 ## RuleKAN learned-support symbolic search
 
 ```python
-from symbolic_kan import learned_support_symbolic_gsr
+from rulekan import learned_support_symbolic_gsr
 
 symbolic_model, history = learned_support_symbolic_gsr(
     model,
@@ -118,7 +118,7 @@ This entry point validates every candidate support and automatically forwards th
 ## Generic matching pursuit / SISP engine
 
 ```python
-from symbolic_kan import mandatory_symbolic_matching_pursuit
+from rulekan import mandatory_symbolic_matching_pursuit
 ```
 
 `mandatory_symbolic_matching_pursuit` is the generic whole-rule search. Passing an independent complete structure bank yields SISP behavior. Passing learned RuleKAN structures directly is possible, but RuleKAN callers should use `learned_support_symbolic_gsr` so support validation remains centralized.
@@ -126,7 +126,7 @@ from symbolic_kan import mandatory_symbolic_matching_pursuit
 ## GMP
 
 ```python
-from symbolic_kan import gmp_symbolic_operator_preselection
+from rulekan import gmp_symbolic_operator_preselection
 ```
 
 GMP receives data, a structure list and a symbolic operator library. It returns per-structure operator proposals used by the hard symbolic search.
@@ -134,7 +134,7 @@ GMP receives data, a structure list and a symbolic operator library. It returns 
 ## `PowerRuleKAN`
 
 ```python
-from symbolic_kan import PowerRuleKAN
+from rulekan import PowerRuleKAN
 ```
 
 Constructor:

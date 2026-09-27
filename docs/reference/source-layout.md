@@ -4,32 +4,34 @@
 
 | Path | Responsibility |
 |---|---|
-| `symbolic_kan/` | RuleKAN, RuleSISP, PowerRuleKAN, composition models, KAN/MultKAN layers, and symbolic utilities |
+| `rulekan/` | RuleKAN, RuleSISP, PowerRuleKAN, composition models, KAN/MultKAN layers, and symbolic utilities |
 | `benchmarks/` | task definitions, model adapters, configuration profiles, execution, and aggregation |
 | `tools/` | diagnostics, sensitivity utilities, smoke tests, and OFAT ablation |
 | `examples/` | executable examples |
 | `tests/` | unit and regression tests |
 | `docs/` | method, benchmark, configuration, and API reference |
 | `run_rulekan_benchmark.sh` | benchmark shell entry point |
-| `setup.sh` | Python environment and optional benchmark dependency bootstrap |
-| `requirements.txt` | core Python dependency list |
+| `setup.sh` | RuleKAN package/development environment |
+| `benchmarks/setup.sh` | Python-3.12 benchmark environment and external baseline setup |
+| `pyproject.toml` | installable package metadata and core runtime dependencies |
+| `requirements.txt` | convenience editable development install; runtime dependencies are declared in `pyproject.toml` |
 
-`.env/`, `external/`, and `benchmark_results/` are runtime directories created locally when needed; they are not required to exist in a source checkout.
+`.env/`, `.env-baselines/`, `external/`, and `benchmark_results/` are runtime directories created locally when needed; they are not required to exist in a source checkout.
 
 ## Model code
 
 | Path | Responsibility |
 |---|---|
-| `symbolic_kan/sum_product_kan.py` | `SumProductKAN`, training stages, pruning, support evidence, Stage-2 GMP/GSR, SISP structure search, affine partitions, and formula export |
-| `symbolic_kan/power_rulekan.py` | PowerRuleKAN structures, signed integer powers, reciprocals, ratios, and polishing |
-| `symbolic_kan/composition_rulekan.py` | bounded depth-2 symbolic composition structures and fitting |
-| `symbolic_kan/MultKAN.py` | MultKAN implementation and KAN-based symbolic-extraction controls |
-| `symbolic_kan/KANLayer.py` | spline KAN edge layer |
-| `symbolic_kan/gated_kan.py` | gated KAN mechanisms used by baseline paths |
-| `symbolic_kan/rule_mask.py` | rule-mask product mechanisms used by examples and compatibility paths |
-| `symbolic_kan/utils.py` | symbolic libraries and shared utilities |
+| `rulekan/sum_product_kan.py` | `SumProductKAN`, training stages, pruning, support evidence, Stage-2 GMP/GSR, SISP structure search, affine partitions, and formula export |
+| `rulekan/power_rulekan.py` | PowerRuleKAN structures, signed integer powers, reciprocals, ratios, and polishing |
+| `rulekan/composition_rulekan.py` | bounded depth-2 symbolic composition structures and fitting |
+| `rulekan/MultKAN.py` | MultKAN implementation and KAN-based symbolic-extraction controls |
+| `rulekan/KANLayer.py` | spline KAN edge layer |
+| `rulekan/gated_kan.py` | gated KAN mechanisms used by baseline paths |
+| `rulekan/rule_mask.py` | rule-mask product mechanisms used by examples and RuleKAN utilities |
+| `rulekan/utils.py` | symbolic libraries and shared utilities |
 
-Public package imports are re-exported from `symbolic_kan/__init__.py`.
+`rulekan/` is the implementation and public Python package namespace.
 
 ## Benchmark code
 
@@ -55,7 +57,8 @@ Public package imports are re-exported from `symbolic_kan/__init__.py`.
 | Path | Responsibility |
 |---|---|
 | `run_rulekan_benchmark.sh` | profile execution, environment checks, tests, and aggregation hook |
-| `setup.sh` | Python-3.12 virtual environment and benchmark dependency setup |
+| `setup.sh` | package/development virtual environment |
+| `benchmarks/setup.sh` | Python-3.12 benchmark virtual environment and external baseline dependency setup |
 | `tools/ablation_ofat.py` | one-factor-at-a-time Feynman ablation |
 | `tools/explain_benchmark_status.py` | incomplete and failed benchmark-record report |
 | `tools/redundancy_report.py` | redundancy analysis for a run directory |

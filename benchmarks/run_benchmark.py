@@ -193,8 +193,9 @@ def _validate_optional_model_dependencies(models: list[str]) -> None:
     )
     raise RuntimeError(
         "selected external benchmark baselines are not importable: " + detail + ". "
-        "Install/repair the standard benchmark dependencies with "
-        "`python -m pip install -r benchmarks/requirements-benchmark.txt`." + extra
+        "Install/repair the benchmark environment with `./benchmarks/setup.sh`. "
+        "Directly pip-installable dependencies are also listed in "
+        "`benchmarks/requirements-benchmark.txt`." + extra
     )
 
 

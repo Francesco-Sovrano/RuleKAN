@@ -22,16 +22,16 @@ The logits remain trainable; the templates are starting points rather than fixed
 
 Variable choice uses categorical logits. Rule and optional factor presence use Hard-Concrete gates. For a gate logit `log_alpha`, temperature `tau`, and stretch endpoints `gamma < 0 < 1 < zeta`, the implementation uses
 
-\[
+$$
 p_{open}=\sigma\left(\log\alpha-\tau\log\frac{-\gamma}{\zeta}\right)
-\]
+$$
 
 for the differentiable expected-open probability. In deterministic mode the relaxed value is formed from
 
-\[
+$$
 s=\sigma(\log\alpha/\tau),\qquad
 \tilde s=\operatorname{clip}_{[0,1]}\bigl(s(\zeta-\gamma)+\gamma\bigr).
-\]
+$$
 
 Stochastic training optionally adds logistic noise before the sigmoid. Hardening interpolates from the relaxed value toward a straight-through binary threshold. The expected-open probabilities enter the L0-style sparsity penalty and the hard values determine the final discrete rule/factor structure. This follows the Hard-Concrete L0-gating construction summarized in [Related work](../related-work.md).
 
@@ -41,9 +41,9 @@ Mandatory prefix factor slots remain active so every rule satisfies `min_order`;
 
 Products of large edge values can create scale-dependent gradients because
 
-\[
+$$
 \frac{\partial}{\partial f_j}\prod_i f_i=\prod_{i\ne j}f_i.
-\]
+$$
 
 The implementation contains optional exact-forward/stabilized-backward transforms. `_identity_forward_stable_backward` leaves the forward value unchanged while replacing the backward sensitivity with a scaled `asinh` derivative. `_equalized_product` similarly stabilizes product gradients without changing the represented forward function.
 
@@ -108,9 +108,9 @@ The resulting symbolic-family parameters are priors for numerical compression; f
 
 A hard numerical RuleKAN can contain several large rules whose contributions cancel. `numeric_logic_diagnostics` measures this with the triangle-inequality ratio
 
-\[
+$$
 C=\frac{\sum_r\lVert c_r\rVert_2}{\lVert\sum_r c_r\rVert_2},
-\]
+$$
 
 where `c_r` is the validation-set contribution of active rule `r`. Values near one indicate little cancellation; larger values indicate compensating rules. The same diagnostic reports pairwise contribution correlation, span redundancy and the set of active hard variable structures.
 

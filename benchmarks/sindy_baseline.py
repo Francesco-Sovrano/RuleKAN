@@ -8,7 +8,7 @@ from typing import Any, Dict, Sequence
 import numpy as np
 import torch
 
-from symbolic_kan.utils import SYMBOLIC_LIB
+from rulekan.utils import SYMBOLIC_LIB
 
 
 DEFAULT_SINDY_LIBRARY = (

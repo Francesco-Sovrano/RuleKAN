@@ -94,7 +94,7 @@ The shallow and deep methods are regression-only in the benchmark harness.
 | Identifier | System | Benchmark dependency |
 |---|---|---|
 | `srkan` | SR-KAN, KAN-guided divide-and-conquer symbolic regression | authors' GitHub repository (`benchmarks/requirements-srkan.txt`) |
-| `symbolic_kan` | Symbolic-KAN trainable analytic network | authors' `Pub_Symbolic_KANs` checkout pinned by `setup.sh` to commit `9481a82` |
+| `symbolic_kan` | Symbolic-KAN trainable analytic network | authors' `Pub_Symbolic_KANs` checkout pinned by `benchmarks/setup.sh` to commit `9481a82` |
 | `pse` | PSE with the official PSRN implementation | `psrn` |
 | `rils_rols` | RILS-ROLS iterated-local-search symbolic regression | `rils-rols` |
 | `udsr` | unified Deep Symbolic Regression (LINEAR/poly + GP meld) | official DSO PyTorch package |

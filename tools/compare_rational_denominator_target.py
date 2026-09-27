@@ -15,7 +15,7 @@ import statistics
 import torch
 
 from benchmarks.models import _symbolicize_rational_branch
-from symbolic_kan.rational_sum_product_kan import RationalSumProductKAN
+from rulekan.rational_sum_product_kan import RationalSumProductKAN
 
 
 def _cfg():

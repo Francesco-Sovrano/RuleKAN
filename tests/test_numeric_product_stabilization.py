@@ -1,6 +1,6 @@
 import torch
 
-from symbolic_kan.sum_product_kan import SumProductKAN
+from rulekan.sum_product_kan import SumProductKAN
 
 
 def _model(factor_scale: float, product_scale: float) -> SumProductKAN:

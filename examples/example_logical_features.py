@@ -1,5 +1,5 @@
-from symbolic_kan import *
-from symbolic_kan.utils import add_symbolic, _safe_log, _safe_recip
+from rulekan import *
+from rulekan.utils import add_symbolic, _safe_log, _safe_recip
 import torch
 import sympy as sp
 import re
